@@ -10,7 +10,7 @@
 
  If these tests fail, nothing else in this repository will work.
  */
-module integration.tests;
+module integration.curl;
 
 import unit_threaded;
 
