@@ -8,7 +8,7 @@ struct Database {
 
     import influxdb.api;
 
-    string url; // e.g. localhost:8086
+    string url; // e.g. http://localhost:8086
     string db;  // e.g. mydb
 
     @disable this();
@@ -16,15 +16,15 @@ struct Database {
         this.url = url;
         this.db = db;
 
-        .manage(url, "CREATE DATABASE " ~ db);
+        manage("CREATE DATABASE " ~ db);
     }
 
     void manage(in string cmd) {
         .manage(url, cmd);
     }
 
-    void query(in string query) {
-        .query(url, db, query);
+    JSONValue query(in string query) {
+        return .query(url, db, query);
     }
 
     void insert(in Measurement[] measurements) {
@@ -34,6 +34,10 @@ struct Database {
 
     void insert(in Measurement[] measurements...) {
         insert(measurements);
+    }
+
+    void drop() {
+        manage("DROP DATABASE " ~ db);
     }
 }
 

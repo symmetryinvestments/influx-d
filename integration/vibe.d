@@ -42,7 +42,6 @@ unittest {
     json.shouldEqual(expected);
 }
 
-@HiddenTest
 @Serial
 @("query database with data")
 unittest {
@@ -70,9 +69,36 @@ unittest {
         point["name"].str.shouldEqual("foo");
         point["values"].array.length.shouldEqual(2);
     }
-
 }
 
+
+@Serial
+@("Database api")
+unittest {
+
+    import influxdb.vibe: Database;
+    import influxdb.api;
+
+    auto database = Database(influxURL, "myspecialDB");
+    scope(exit) database.drop;
+
+    database.insert(Measurement("cpu", ["tag1": "foo"], ["temperature": "42"]));
+    database.insert(Measurement("cpu", ["tag1": "foo"], ["temperature": "68"]));
+
+    {
+        const json = database.query("SELECT * from cpu");
+        const result = json.object["results"].array[0].object;
+        const point = result["series"].array[0].object;
+        point["values"].array.length.shouldEqual(2);
+    }
+
+    {
+        const json = database.query("SELECT * from cpu WHERE temperature > 50");
+        const result = json.object["results"].array[0].object;
+        const point = result["series"].array[0].object;
+        point["values"].array.length.shouldEqual(1);
+    }
+}
 
 private void wait() {
     import core.thread;
