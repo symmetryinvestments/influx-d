@@ -11,6 +11,7 @@
     "license": "BSD 3-clause",
     "targetType": "library",
     "sourcePaths": ["source"],
+    "versions": ["unitUnthreaded"],
 
     "configurations": [
 
@@ -20,10 +21,10 @@
             "name": "unittest",
             "targetType": "executable",
             "targetName": "bin/ut",
-            "preBuildCommands": ["dub run unit-threaded -c gen_ut_main -- -f bin/ut.d"],
+            "preBuildCommandsss": ["dub run unit-threaded -c gen_ut_main -- -f bin/ut.d"],
             "mainSourceFile": "bin/ut.d",
             "dependencies": {
-                "unit-threaded": "~>0.7.6"
+                "unit-threaded": "~>0.7.7"
             }
         },
         {
@@ -33,7 +34,7 @@
             "sourcePaths": ["source", "integration"],
             "dflags": ["-unittest"],
             "dependencies": {
-                "unit-threaded": "~>0.7.6"
+                "unit-threaded": "~>0.7.7"
             }
 
         }
