@@ -5,6 +5,8 @@ version(unittest) import unit_threaded;
 
 struct Measurement {
 
+    import std.datetime: SysTime;
+
     string name;
     string[string] tags;
     string[string] fields;
@@ -12,16 +14,20 @@ struct Measurement {
 
     @disable this();
 
-    this(string name, string[string] fields) @safe pure {
+    this(string name, string[string] fields, SysTime time = SysTime.fromUnixTime(0)) @safe pure {
         string[string] tags;
         this(name, tags, fields);
     }
 
-    this(string name, string[string] tags, string[string] fields) @safe pure {
+    this(string name,
+         string[string] tags,
+         string[string] fields,
+         SysTime time = SysTime.fromUnixTime(0)) @safe pure
+    {
         this.name = name;
         this.tags = tags;
         this.fields = fields;
-        this.timestamp = 0;
+        this.timestamp = time.toUnixTime;
     }
 
     string toString() @safe pure const {
@@ -69,6 +75,7 @@ struct Measurement {
                          ["load": "42", "temperature": "53"]);
     m.toString.shouldEqualLine("cpu load=42,temperature=53");
 }
+
 
 
 version(unittest) {
