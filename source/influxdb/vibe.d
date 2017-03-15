@@ -4,6 +4,40 @@ module influxdb.vibe;
 import std.json: JSONValue;
 
 
+struct Database {
+
+    import influxdb.api;
+
+    string url; // e.g. localhost:8086
+    string db;  // e.g. mydb
+
+    @disable this();
+    this(string url, string db) {
+        this.url = url;
+        this.db = db;
+
+        .manage(url, "CREATE DATABASE " ~ db);
+    }
+
+    void manage(in string cmd) {
+        .manage(url, cmd);
+    }
+
+    void query(in string query) {
+        .query(url, db, query);
+    }
+
+    void insert(in Measurement[] measurements) {
+        foreach(ref const m; measurements)
+            .write(url, db, m.toString);
+    }
+
+    void insert(in Measurement[] measurements...) {
+        insert(measurements);
+    }
+}
+
+
 void manage(in string url, in string str) {
     vibePostQuery(url, "q=" ~ str);
 }
