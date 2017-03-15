@@ -1,3 +1,3 @@
 module influxdb;
 
-version(unittest) import unit_threaded;
+public import influxdb.api;
