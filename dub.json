@@ -30,7 +30,7 @@
             "name": "integration",
             "targetType": "executable",
             "targetName": "bin/it",
-            "sourcePaths": ["integration"],
+            "sourcePaths": ["source", "integration"],
             "dflags": ["-unittest"],
             "dependencies": {
                 "unit-threaded": "~>0.7.6"
