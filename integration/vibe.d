@@ -80,37 +80,47 @@ unittest {
 
 }
 
-private void vibePostQuery(in string url, in string str, in string file = __FILE__, in size_t line = __LINE__) {
+private string vibeHttpRequest(in string url,
+                               in ubyte[] data,
+                               in string file = __FILE__,
+                               in size_t line = __LINE__) {
 
-    static import vibe.core.core;
+    string ret;
 
-    requestHTTP(url ~ "/query",
+    requestHTTP(url,
                 (scope req) {
-                    req.method = HTTPMethod.POST;
+
                     req.contentType= "application/x-www-form-urlencoded";
-                    auto body_ = str.urlEncode;
-                    req.writeBody(cast(ubyte[])body_);
+                    if(data.length) {
+                        req.method = HTTPMethod.POST;
+                        req.writeBody(data);
+                    }
+
                 },
                 (scope res) {
-                    if(res.statusCode != 200)
-                        throw new UnitTestException(res.bodyReader.readAllUTF8, file, line);
+                    ret = res.bodyReader.readAllUTF8;
+                    if(res.statusCode < 200 || res.statusCode > 299)
+                        throw new UnitTestException(ret, file, line);
                 }
         );
+
+    return ret;
+
 }
 
-private void vibePostWrite(in string url, in string db, in string str,
+private string vibePostQuery(in string url,
+                           in string query,
+                           in string file = __FILE__,
+                           in size_t line = __LINE__) {
+    return vibeHttpRequest(url ~ "/query",
+                           cast(ubyte[])query.urlEncode,
+                           file,
+                           line);
+}
+
+private string vibePostWrite(in string url, in string db, in string str,
                            in string file = __FILE__, in size_t line = __LINE__) {
-    requestHTTP(url ~ "/write?db=" ~ db,
-                (scope req){
-                    req.method = HTTPMethod.POST;
-                    req.contentType= "application/x-www-form-urlencoded";
-                    req.writeBody(cast(ubyte[])str);
-                },
-                (scope res){
-                    if(res.statusCode < 200 || res.statusCode > 299)
-                        throw new UnitTestException(res.bodyReader.readAllUTF8, file, line);
-                }
-        );
+    return vibeHttpRequest(url ~ "/write?db=" ~ db, cast(ubyte[])str, file, line);
 }
 
 
@@ -122,20 +132,9 @@ private JSONValue vibeGet(in string url, in string db, in string arg,
     import std.range: chain;
     import std.json: parseJSON;
 
-    string ret;
-
-    requestHTTP(url ~ "/query?" ~ ["db=" ~ db, "q=" ~ arg].map!urlEncode.array.join("&"),
-                (scope req){
-                },
-                (scope res){
-                    if(res.statusCode != 200)
-                        throw new UnitTestException(res.bodyReader.readAllUTF8, file, line);
-
-                    ret = res.bodyReader.readAllUTF8;
-                }
-        );
-
-    return ret.parseJSON;
+    const fullUrl = url ~ "/query?" ~ ["db=" ~ db, "q=" ~ arg].map!urlEncode.array.join("&");
+    const jsonString =  vibeHttpRequest(fullUrl, [], file, line);
+    return jsonString.parseJSON;
 }
 
 
