@@ -1,4 +1,4 @@
-module influx.vibe;
+module influxdb.vibe;
 
 
 import std.json: JSONValue;
