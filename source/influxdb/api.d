@@ -14,7 +14,10 @@ struct Measurement {
 
     @disable this();
 
-    this(string name, string[string] fields, SysTime time = SysTime.fromUnixTime(0)) @safe pure {
+    this(string name,
+         string[string] fields,
+         SysTime time = SysTime.fromUnixTime(0))
+    @safe pure nothrow {
         string[string] tags;
         this(name, tags, fields);
     }
@@ -22,8 +25,8 @@ struct Measurement {
     this(string name,
          string[string] tags,
          string[string] fields,
-         SysTime time = SysTime.fromUnixTime(0)) @safe pure
-    {
+         SysTime time = SysTime.fromUnixTime(0))
+    @safe pure nothrow {
         this.name = name;
         this.tags = tags;
         this.fields = fields;
@@ -76,6 +79,17 @@ struct Measurement {
     m.toString.shouldEqualLine("cpu load=42,temperature=53");
 }
 
+@("Measurement.toString with timestamp")
+@safe pure unittest {
+
+    import std.datetime: SysTime;
+
+    auto m = Measurement("cpu",
+                         ["tag1": "toto", "tag2": "foo"],
+                         ["load": "42", "temperature": "53"],
+                         SysTime.fromUnixTime(7));
+    m.toString.shouldEqualLine("cpu,tag1=toto,tag2=foo load=42,temperature=53 7");
+}
 
 
 version(unittest) {
