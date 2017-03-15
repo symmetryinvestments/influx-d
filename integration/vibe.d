@@ -18,8 +18,11 @@ private void manage(in string url, in string str) {
 @("manage")
 unittest {
     manage(influxURL, "DROP DATABASE test_vibe_db");
+    wait;
     manage(influxURL, "CREATE DATABASE test_vibe_db");
+    wait;
     manage(influxURL, "DROP DATABASE test_vibe_db");
+    wait;
 }
 
 private void query(in string url, in string db) {
@@ -27,35 +30,89 @@ private void query(in string url, in string db) {
 }
 
 @Serial
-@("Query empty database")
+@("query empty database")
 unittest {
     manage(influxURL, "DROP DATABASE test_vibe_db");
+    wait;
     manage(influxURL, "CREATE DATABASE test_vibe_db");
-    scope(exit) manage(influxURL, "DROP DATABASE test_vibe_db");
+    wait;
+    scope(exit) {
+        manage(influxURL, "DROP DATABASE test_vibe_db");
+        wait;
+    }
 
     const json = vibeGet(influxURL, "test_vibe_db", "SELECT * from foo");
-    json.object["results"].array.length.shouldEqual(1);
-    const result = json.object["results"].array[0];
-    result.object.keys.shouldBeSameSetAs(["statement_id"]);
+    JSONValue expected;
+    JSONValue result;
+    result["statement_id"] = JSONValue(0);
+    expected["results"] = [result];
+    json.shouldEqual(expected);
 }
 
+@HiddenTest
+@Serial
+@("query database with data")
+unittest {
+    import std.algorithm: map;
+
+    manage(influxURL, "DROP DATABASE test_vibe_db");
+    wait;
+    manage(influxURL, "CREATE DATABASE test_vibe_db");
+    wait;
+    scope(exit) {
+        manage(influxURL, "DROP DATABASE test_vibe_db");
+        wait;
+    }
+
+    vibePostWrite(influxURL, "test_vibe_db", "foo,tag1=letag,tag2=othertag value=1,othervalue=3");
+    vibePostWrite(influxURL, "test_vibe_db", "foo,tag1=toto,tag2=titi value=2,othervalue=4 1434055562000000000");
+    wait;
+
+    {
+        const json = vibeGet(influxURL, "test_vibe_db", "SELECT * from foo");
+        const result = json.object["results"].array[0].object;
+        const point = result["series"].array[0].object;
+        point["columns"].array.map!(a => a.str).shouldBeSameSetAs(
+            ["time", "othervalue", "tag1", "tag2", "value"]);
+        point["name"].str.shouldEqual("foo");
+        point["values"].array.length.shouldEqual(2);
+    }
+
+}
 
 private void vibePostQuery(in string url, in string str, in string file = __FILE__, in size_t line = __LINE__) {
+
+    static import vibe.core.core;
+
     requestHTTP(url ~ "/query",
-                (scope req){
+                (scope req) {
                     req.method = HTTPMethod.POST;
                     req.contentType= "application/x-www-form-urlencoded";
                     auto body_ = str.urlEncode;
-                    writelnUt(body_);
                     req.writeBody(cast(ubyte[])body_);
                 },
-                (scope res){
+                (scope res) {
                     if(res.statusCode != 200)
-                        throw new UnitTestException(res.bodyReader.readAllUTF8);
+                        throw new UnitTestException(res.bodyReader.readAllUTF8, file, line);
                 }
         );
-
 }
+
+private void vibePostWrite(in string url, in string db, in string str,
+                           in string file = __FILE__, in size_t line = __LINE__) {
+    requestHTTP(url ~ "/write?db=" ~ db,
+                (scope req){
+                    req.method = HTTPMethod.POST;
+                    req.contentType= "application/x-www-form-urlencoded";
+                    req.writeBody(cast(ubyte[])str);
+                },
+                (scope res){
+                    if(res.statusCode < 200 || res.statusCode > 299)
+                        throw new UnitTestException(res.bodyReader.readAllUTF8, file, line);
+                }
+        );
+}
+
 
 private JSONValue vibeGet(in string url, in string db, in string arg,
                           in string file = __FILE__, in size_t line = __LINE__) {
@@ -72,7 +129,7 @@ private JSONValue vibeGet(in string url, in string db, in string arg,
                 },
                 (scope res){
                     if(res.statusCode != 200)
-                        throw new UnitTestException(res.bodyReader.readAllUTF8);
+                        throw new UnitTestException(res.bodyReader.readAllUTF8, file, line);
 
                     ret = res.bodyReader.readAllUTF8;
                 }
@@ -90,4 +147,9 @@ string urlEncode(in string str) {
     const allowedChars = "=";
     filterURLEncode(output, str, allowedChars);
     return cast(string)output.data;
+}
+
+void wait() {
+    import core.thread;
+    Thread.sleep(10.msecs);
 }
