@@ -3,6 +3,7 @@ import unit_threaded;
 int main(string[] args)
 {
     return args.runTests!(
-        "integration.curl"
+        "integration.curl",
+        "integration.vibe",
     );
 }

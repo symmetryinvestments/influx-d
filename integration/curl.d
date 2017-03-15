@@ -13,9 +13,7 @@
 module integration.curl;
 
 import unit_threaded;
-
-
-enum influxURL = "http://localhost:8086";
+import integration.common: influxURL;
 
 
 @Serial
