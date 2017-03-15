@@ -12,6 +12,11 @@ struct Measurement {
 
     @disable this();
 
+    this(string name, string[string] fields) @safe pure {
+        string[string] tags;
+        this(name, tags, fields);
+    }
+
     this(string name, string[string] tags, string[string] fields) @safe pure {
         this.name = name;
         this.tags = tags;
@@ -57,6 +62,14 @@ struct Measurement {
         m.toString.shouldEqualLine("thingie,foo=bar value=7");
     }
 }
+
+@("Measurement.toString no timestamp no tags")
+@safe pure unittest {
+    auto m = Measurement("cpu",
+                         ["load": "42", "temperature": "53"]);
+    m.toString.shouldEqualLine("cpu load=42,temperature=53");
+}
+
 
 version(unittest) {
     /**
