@@ -16,13 +16,13 @@ struct Measurement {
         this.name = name;
         this.tags = tags;
         this.fields = fields;
-        this.timestamp = 1434055562000000000;
+        this.timestamp = 0;
     }
 
     string toString() @safe pure const {
         import std.range: chain;
-        import std.conv: text;
-        import std.algorithm: joiner;
+        import std.conv: to;
+        import std.array: join;
 
         // @trusted due to aa.keys
         auto aaToString(in string[string] aa) @trusted {
@@ -30,10 +30,13 @@ struct Measurement {
             return aa.keys.map!(k => k ~ "=" ~ aa[k]);
         }
 
-        return text(chain([name], aaToString(tags)).joiner(","),
-                    " ", aaToString(fields).joiner(","),
-                    " ", timestamp,
-        );
+        const nameTags = chain([name], aaToString(tags)).join(",");
+        const fields = aaToString(fields).join(",");
+
+        auto parts = [nameTags.to!string, fields.to!string];
+        if(timestamp != 0) parts ~= timestamp.to!string;
+
+        return parts.join(" ");
     }
 }
 
@@ -44,14 +47,14 @@ struct Measurement {
         auto m = Measurement("cpu",
                              ["tag1": "toto", "tag2": "foo"],
                              ["load": "42", "temperature": "53"]);
-        m.toString.shouldEqualLine("cpu,tag1=toto,tag2=foo load=42,temperature=53 1434055562000000000");
+        m.toString.shouldEqualLine("cpu,tag1=toto,tag2=foo load=42,temperature=53");
     }
 
     {
         auto m = Measurement("thingie",
                              ["foo": "bar"],
                              ["value": "7"]);
-        m.toString.shouldEqualLine("thingie,foo=bar value=7 1434055562000000000");
+        m.toString.shouldEqualLine("thingie,foo=bar value=7");
     }
 }
 
@@ -77,8 +80,8 @@ version(unittest) {
             import std.conv: text;
 
             auto parts = line.split(" ");
-            assert(parts.length == 3,
-                   text("Illegal number of parts: ", parts.length));
+            assert(parts.length == 3 || parts.length == 2,
+                   text("Illegal number of parts( ", parts.length, ") in ", line));
 
             auto nameTags = parts[0].split(",");
             const name = nameTags[0];
@@ -86,9 +89,12 @@ version(unittest) {
 
             auto fields = parts[1].split(",");
 
-            return chain([name], sort(tags)).join(",") ~ " " ~
-                sort(fields).join(",") ~ " " ~
-                parts[2];
+            auto newNameTags = chain([name], sort(tags)).join(",");
+            auto newFields = sort(fields).join(",");
+            auto newParts = [newNameTags, newFields];
+            if(parts.length > 2) newParts ~= parts[2];
+
+            return newParts.join(" ");
         }
 
         sortLine(actual).shouldEqual(sortLine(expected), file, line);
