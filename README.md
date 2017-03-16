@@ -2,7 +2,7 @@
 
 D programming language wrapper for InfluxDB.
 
-Getting started tutorial (hopefully self-explantory):
+Getting started tutorial (hopefully self-explanatory):
 
 ```d
 
