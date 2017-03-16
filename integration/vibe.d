@@ -96,7 +96,7 @@ unittest {
 
 //     import influxdb.api: Database, Measurement;
 
-//     auto database = Database(influxURL, "myspecialDB");
+//     const database = Database(influxURL, "myspecialDB");
 //     scope(exit) database.drop;
 
 //     database.insert(Measurement("cpu", ["tag1": "foo"], ["temperature": "42"]));

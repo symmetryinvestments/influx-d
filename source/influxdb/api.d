@@ -25,25 +25,25 @@ struct DatabaseImpl(alias manageFunc, alias queryFunc, alias writeFunc) {
         manage("CREATE DATABASE " ~ db);
     }
 
-    void manage(in string cmd) {
+    void manage(in string cmd) const {
         manageFunc(url, cmd);
     }
 
-    Response query(in string query) @trusted { // deserialize is @system
+    Response query(in string query) @trusted const { // deserialize is @system
         import asdf: deserialize;
         return queryFunc(url, db, query).deserialize!Response;
     }
 
-    void insert(in Measurement[] measurements) {
+    void insert(in Measurement[] measurements) const {
         foreach(ref const m; measurements)
             writeFunc(url, db, m.toString);
     }
 
-    void insert(in Measurement[] measurements...) {
+    void insert(in Measurement[] measurements...) const {
         insert(measurements);
     }
 
-    void drop() {
+    void drop() const {
         manage("DROP DATABASE " ~ db);
     }
 }
@@ -78,7 +78,7 @@ struct DatabaseImpl(alias manageFunc, alias queryFunc, alias writeFunc) {
     );
 
     manages.shouldBeEmpty;
-    auto database = TestDatabase("http://db.com", "testdb");
+    const database = TestDatabase("http://db.com", "testdb");
     manages.shouldEqual([["url": "http://db.com", "cmd": "CREATE DATABASE testdb"]]);
 
     writes.shouldBeEmpty;
