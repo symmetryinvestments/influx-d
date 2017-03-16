@@ -6,13 +6,8 @@ void manage(in string url, in string str) {
     vibePostQuery(url, "q=" ~ str);
 }
 
-/**
-   Returns a JSON object. The return type is auto to avoid
-   the top-level import based on the parsing function.
- */
-auto query(in string url, in string db, in string query) {
-    import std.json: parseJSON;
-    return vibeGet(url, db, query).parseJSON;
+string query(in string url, in string db, in string query) {
+    return vibeGet(url, db, query);
 }
 
 void write(in string url, in string db, in string line) {
@@ -41,7 +36,6 @@ private string vibeGet(in string url, in string db, in string arg,
     import std.algorithm: map;
     import std.array: array, join;
     import std.range: chain;
-    import std.json: parseJSON;
 
     const fullUrl = url ~ "/query?" ~ ["db=" ~ db, "q=" ~ arg].map!urlEncode.array.join("&");
     return vibeHttpRequest(fullUrl, [], file, line);

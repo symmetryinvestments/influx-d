@@ -7,7 +7,7 @@ module integration.vibe;
 import unit_threaded;
 import integration.common: influxURL;
 import influxdb.vibe: manage, query, write;
-import std.json: JSONValue;
+import std.json: JSONValue, parseJSON;
 
 
 @Serial
@@ -34,7 +34,7 @@ unittest {
         wait;
     }
 
-    const json = query(influxURL, "test_vibe_db", "SELECT * from foo");
+    const json = query(influxURL, "test_vibe_db", "SELECT * from foo").parseJSON;
     JSONValue expected;
     JSONValue result;
     result["statement_id"] = JSONValue(0);
@@ -79,7 +79,7 @@ unittest {
     wait;
 
     {
-        const json = query(influxURL, "test_vibe_db", "SELECT * from foo");
+        const json = query(influxURL, "test_vibe_db", "SELECT * from foo").parseJSON;
         const result = json.object["results"].array[0].object;
         const table = result["series"].array[0].object;
         table["columns"].array.map!(a => a.str).shouldBeSameSetAs(
@@ -103,14 +103,14 @@ unittest {
     database.insert(Measurement("cpu", ["tag1": "foo"], ["temperature": "68"]));
 
     {
-        const json = database.query("SELECT * from cpu");
+        const json = database.query("SELECT * from cpu").parseJSON;
         const result = json.object["results"].array[0].object;
         const table = result["series"].array[0].object;
         table["values"].array.length.shouldEqual(2);
     }
 
     {
-        const json = database.query("SELECT * from cpu WHERE temperature > 50");
+        const json = database.query("SELECT * from cpu WHERE temperature > 50").parseJSON;
         const result = json.object["results"].array[0].object;
         const table = result["series"].array[0].object;
         table["values"].array.length.shouldEqual(1);

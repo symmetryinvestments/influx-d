@@ -53,7 +53,7 @@ struct DatabaseImpl(alias manageFunc, alias queryFunc, alias writeFunc) {
 }
 
 @("Database")
-@safe pure unittest {
+@safe unittest { // not pure because of parseJSON
 
     string[string][] manages;
     string[string][] queries;
@@ -62,7 +62,9 @@ struct DatabaseImpl(alias manageFunc, alias queryFunc, alias writeFunc) {
     alias TestDatabase = DatabaseImpl!(
         (url, cmd) => manages ~= ["url": url, "cmd": cmd],
         (url, db, query) {
+            import std.json;
             queries ~= ["url": url, "db": db, "query": query];
+            return parseJSON(`{}`);
         },
         (url, db, line) => writes ~= ["url": url, "db": db, "line": line]
     );
