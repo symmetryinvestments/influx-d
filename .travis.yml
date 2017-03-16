@@ -1,11 +1,15 @@
 language: d
-dist: precise
-sudo: false
+dist: trusty
+sudo: true
 
-addons:
-  apt:
-    packages:
-      - influxdb
+before_install:
+  - curl -sL https://repos.influxdata.com/influxdb.key | sudo apt-key add -
+  - source /etc/lsb-release
+  - echo "deb https://repos.influxdata.com/${DISTRIB_ID,,} ${DISTRIB_CODENAME} stable" | sudo tee /etc/apt/sources.list.d/influxdb.list
+  - sudo apt-get update
+
+install:
+  - sudo -E apt-get -yq --no-install-suggests --no-install-recommends --force-yes install influxdb
 
 services:
   - influxdb
