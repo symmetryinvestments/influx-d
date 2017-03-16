@@ -90,32 +90,32 @@ unittest {
 }
 
 
-@Serial
-@("Database api")
-unittest {
+// @Serial
+// @("Database api")
+// unittest {
 
-    import influxdb.api: Database, Measurement;
+//     import influxdb.api: Database, Measurement;
 
-    auto database = Database(influxURL, "myspecialDB");
-    scope(exit) database.drop;
+//     auto database = Database(influxURL, "myspecialDB");
+//     scope(exit) database.drop;
 
-    database.insert(Measurement("cpu", ["tag1": "foo"], ["temperature": "42"]));
-    database.insert(Measurement("cpu", ["tag1": "foo"], ["temperature": "68"]));
+//     database.insert(Measurement("cpu", ["tag1": "foo"], ["temperature": "42"]));
+//     database.insert(Measurement("cpu", ["tag1": "foo"], ["temperature": "68"]));
 
-    {
-        const json = database.query("SELECT * from cpu").parseJSON;
-        const result = json.object["results"].array[0].object;
-        const table = result["series"].array[0].object;
-        table["values"].array.length.shouldEqual(2);
-    }
+//     {
+//         const json = database.query("SELECT * from cpu").parseJSON;
+//         const result = json.object["results"].array[0].object;
+//         const table = result["series"].array[0].object;
+//         table["values"].array.length.shouldEqual(2);
+//     }
 
-    {
-        const json = database.query("SELECT * from cpu WHERE temperature > 50").parseJSON;
-        const result = json.object["results"].array[0].object;
-        const table = result["series"].array[0].object;
-        table["values"].array.length.shouldEqual(1);
-    }
-}
+//     {
+//         const json = database.query("SELECT * from cpu WHERE temperature > 50").parseJSON;
+//         const result = json.object["results"].array[0].object;
+//         const table = result["series"].array[0].object;
+//         table["values"].array.length.shouldEqual(1);
+//     }
+// }
 
 private void wait() {
     import core.thread;

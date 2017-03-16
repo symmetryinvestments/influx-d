@@ -29,12 +29,9 @@ struct DatabaseImpl(alias manageFunc, alias queryFunc, alias writeFunc) {
         manageFunc(url, cmd);
     }
 
-    /**
-       Returns a JSON object. The return type is auto to avoid
-       the top-level import based on the parsing function.
-    */
-    auto query(in string query) {
-        return queryFunc(url, db, query);
+    Response query(in string query) @trusted { // deserialize is @system
+        import asdf: deserialize;
+        return queryFunc(url, db, query).deserialize!Response;
     }
 
     void insert(in Measurement[] measurements) {
@@ -52,7 +49,7 @@ struct DatabaseImpl(alias manageFunc, alias queryFunc, alias writeFunc) {
 }
 
 @("Database")
-@safe pure unittest {
+@safe unittest { // not pure because of asdf.deserialize
 
     string[string][] manages;
     string[string][] queries;
@@ -62,7 +59,20 @@ struct DatabaseImpl(alias manageFunc, alias queryFunc, alias writeFunc) {
         (url, cmd) => manages ~= ["url": url, "cmd": cmd],
         (url, db, query) {
             queries ~= ["url": url, "db": db, "query": query];
-            return `{}`;
+            return
+            `{
+                 "results": [{
+                     "series": [{
+                             "columns": ["time", "othervalue", "tag1", "tag2", "value"],
+                             "name": "lename",
+                             "values": [
+                                     ["2015-06-11T20:46:02Z", 4, "toto", "titi", 2],
+                                     ["2017-03-14T23:15:01.06282785Z", 3, "letag", "othertag", 1]
+                             ]
+                     }],
+                     "statement_id": 33
+                 }]
+             }`;
         },
         (url, db, line) => writes ~= ["url": url, "db": db, "line": line]
     );
@@ -77,8 +87,24 @@ struct DatabaseImpl(alias manageFunc, alias queryFunc, alias writeFunc) {
                          "line": "cpu,tag1=foo temperature=42"]]);
 
     queries.shouldBeEmpty;
-    database.query("SELECT * from foo");
+    const response = database.query("SELECT * from foo");
     queries.shouldEqual([["url": "http://db.com", "db": "testdb", "query": "SELECT * from foo"]]);
+
+    response.results.length.shouldEqual(1);
+    response.results[0].statement_id.shouldEqual(33);
+    response.results[0].series.length.shouldEqual(1);
+    const series = response.results[0].series[0];
+    series.shouldEqual(
+        MeasurementSeries(
+            "lename", //name
+            ["time", "othervalue", "tag1", "tag2", "value"], //columns
+            //values
+            [
+                ["2015-06-11T20:46:02Z", "4", "toto", "titi", "2"],
+                ["2017-03-14T23:15:01.06282785Z", "3", "letag", "othertag", "1"],
+            ]
+        )
+    );
 }
 
 
@@ -181,10 +207,12 @@ struct Result {
 }
 
 struct MeasurementSeries {
-    import asdf: serializationFlexible;
+
+    import asdf: serializationIgnoreIn, Asdf;
+
     string name;
     string[] columns;
-    @serializationFlexible string[][] values;
+    @serializationIgnoreIn string[][] values;
 
     static struct Rows {
 
@@ -239,6 +267,16 @@ struct MeasurementSeries {
 
     Rows rows() @safe pure nothrow {
         return Rows(columns, values);
+    }
+
+    void finalizeDeserialization(Asdf data) {
+        import std.algorithm: map;
+        import std.array: array;
+
+        auto dataValues = data["values"];
+        foreach(row; dataValues.byElement) {
+            values ~= row.byElement.map!(a => cast(string)a).array;
+        }
     }
 }
 
