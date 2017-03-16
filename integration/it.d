@@ -6,5 +6,6 @@ int main(string[] args)
         "integration.curl",
         "integration.vibe",
         "integration.asdf",
+        "integration.api",
     );
 }
