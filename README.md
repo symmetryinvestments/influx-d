@@ -12,18 +12,21 @@ import influxdb;
 const database = Database("http://localhost:8086" /*URL*/, "mydb" /*DB name*/);
 
 // no explicit timestamp
-database.insert(Measurement("cpu", ["tag1": "foo"], ["temperature": 42]));
-// insert can also take Measurement[] or a variadic number
+database.insert(Measurement("cpu" /*name*/, ["tag1": "foo"] /*tags*/, ["temperature": 42] /*values*/));
+// `insert` can also take `Measurement[]` or a variadic number of `Measurement`s
+// Measurement also has a contructor that does't take tags:
+// auto m = Measurement("cpu", ["temperature": 42]);
 
 // explicit timestamp
-import std.datetime;
+import std.datetime: Clock;
 database.insert(Measurement("cpu", ["tag1": "foo"], ["temperature": 68], Clock.currTime));
 
 // this will have the two measurements
 const response = database.query("SELECT * FROM cpu");
 
-// the code below assumes a response with one result and that result has only
-// one series
+// Accessing the response.
+// The code below assumes a response with one result and that result has only
+// one series.
 
 assert(response.results.length == 1);
 const result = response.results[0];
