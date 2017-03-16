@@ -49,8 +49,8 @@ import unit_threaded;
 
 void shouldBeSameJsonAs(in string actual,
                         in string expected,
-                        string file = __FILE__,
-                        size_t line = __LINE__)
+                        in string file = __FILE__,
+                        in size_t line = __LINE__)
     @safe
 {
     import std.json;
