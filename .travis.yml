@@ -9,7 +9,7 @@ before_install:
   - sudo apt-get update
 
 install:
-  - sudo -E apt-get -yq --no-install-suggests --no-install-recommends --force-yes install influxdb
+  - sudo -E apt-get -yq --no-install-suggests --no-install-recommends --force-yes install influxdb libevent-dev
 
 services:
   - influxdb
