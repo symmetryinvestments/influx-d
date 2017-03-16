@@ -265,8 +265,8 @@ struct MeasurementSeries {
         }
     }
 
-    Rows rows() @safe pure nothrow {
-        return Rows(columns, values);
+    inout(Rows) rows() @safe pure nothrow inout {
+        return inout(Rows)(columns, values);
     }
 
     void finalizeDeserialization(Asdf data) {
