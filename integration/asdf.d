@@ -28,9 +28,9 @@ import unit_threaded;
             [
                 Result(
                     [
-                        Table(
-                            ["time", "othervalue", "tag1", "tag2", "value"], //columns
+                        MeasurementSeries(
                             "myname", //name
+                            ["time", "othervalue", "tag1", "tag2", "value"], //columns
                             //values
                             [
                                 ["2015-06-11T20:46:02Z", "4", "toto", "titi", "2"],

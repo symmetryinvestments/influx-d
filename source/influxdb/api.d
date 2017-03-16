@@ -81,23 +81,6 @@ struct DatabaseImpl(alias manageFunc, alias queryFunc, alias writeFunc) {
     queries.shouldEqual([["url": "http://db.com", "db": "testdb", "query": "SELECT * from foo"]]);
 }
 
-struct Response {
-    Result[] results;
-}
-
-struct Result {
-    Table[] series;
-    int statement_id;
-}
-
-struct Table {
-    import asdf: serializationFlexible;
-    string[] columns;
-    string name;
-    @serializationFlexible string[][] values;
-}
-
-
 
 struct Measurement {
 
@@ -185,6 +168,100 @@ struct Measurement {
                          ["load": "42", "temperature": "53"],
                          SysTime.fromUnixTime(7));
     m.toString.shouldEqualLine("cpu,tag1=toto,tag2=foo load=42,temperature=53 7");
+}
+
+
+struct Response {
+    Result[] results;
+}
+
+struct Result {
+    MeasurementSeries[] series;
+    int statement_id;
+}
+
+struct MeasurementSeries {
+    import asdf: serializationFlexible;
+    string name;
+    string[] columns;
+    @serializationFlexible string[][] values;
+
+    static struct Rows {
+
+        const string[] columns;
+        const(string[])[] rows;
+
+        static struct Row {
+
+            import std.datetime: SysTime;
+
+            const string[] columnNames;
+            const string[] columnValues;
+
+            string opIndex(in string key) @safe pure const {
+                import std.algorithm: countUntil;
+                return columnValues[columnNames.countUntil(key)];
+            }
+
+            SysTime time() @safe const {
+                return SysTime.fromISOExtString(this["time"]);
+            }
+            string toString() @safe const pure nothrow {
+
+                import std.string: join;
+
+                string[] ret;
+                foreach(i, ref value; columnValues) {
+                    ret ~= columnNames[i] ~ ": " ~ value;
+                }
+                return "Row(" ~ ret.join(", ") ~ ")";
+            }
+        }
+
+        Row opIndex(in size_t i) @safe pure const nothrow {
+            return Row(columns, rows[i]);
+        }
+
+        size_t length() @safe pure const nothrow { return rows.length; }
+
+        void popFront() @safe pure nothrow {
+            rows = rows[1 .. $];
+        }
+
+        Row front() @safe pure nothrow {
+            return this[0];
+        }
+
+        bool empty() @safe pure nothrow const {
+            return rows.length == 0;
+        }
+    }
+
+    Rows rows() @safe pure nothrow {
+        return Rows(columns, values);
+    }
+}
+
+@("MeasurementSeries.rows")
+@safe unittest {
+
+    import std.datetime: SysTime, DateTime, UTC;
+    import std.array: array;
+
+    auto series = MeasurementSeries("coolness",
+                                    ["time", "foo", "bar"],
+                                    [["2015-06-11T20:46:02Z", "red", "blue"]]);
+
+    series.rows[0]["foo"].shouldEqual("red");
+    series.rows[0]["time"].shouldEqual("2015-06-11T20:46:02Z");
+    series.rows[0].time.shouldEqual(SysTime(DateTime(2015, 06, 11, 20, 46, 2), UTC()));
+
+    series.rows.array.shouldEqual(
+        [
+            MeasurementSeries.Rows.Row(["time", "foo", "bar"],
+                                       ["2015-06-11T20:46:02Z", "red", "blue"]),
+        ]
+    );
 }
 
 
