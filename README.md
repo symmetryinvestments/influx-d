@@ -21,7 +21,7 @@ database.insert(Measurement("cpu" /*name*/, ["tag1": "foo"] /*tags*/, ["temperat
 import std.datetime: Clock;
 database.insert(Measurement("cpu", ["tag1": "foo"], ["temperature": 68], Clock.currTime));
 
-// this will have the two measurements
+// this will have the two measurements given the code above
 const response = database.query("SELECT * FROM cpu");
 
 // Accessing the response.
