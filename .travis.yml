@@ -2,9 +2,10 @@ language: d
 dist: trusty
 sudo: false
 
-apt:
-  packages:
-    - influxdb
+addons:
+  apt:
+    packages:
+      - influxdb
 
 services:
   - influxdb
