@@ -5,7 +5,6 @@ version(unittest) import unit_threaded;
 
 alias Database = DatabaseImpl!(influxdb.vibe.manage, influxdb.vibe.query, influxdb.vibe.write);
 
-
 /**
  Holds information about the database name and URL, forwards
  it to the implemetation functions for managing, querying and
@@ -53,7 +52,7 @@ struct DatabaseImpl(alias manageFunc, alias queryFunc, alias writeFunc) {
 }
 
 @("Database")
-@safe unittest { // not pure because of parseJSON
+@safe pure unittest {
 
     string[string][] manages;
     string[string][] queries;
@@ -62,9 +61,8 @@ struct DatabaseImpl(alias manageFunc, alias queryFunc, alias writeFunc) {
     alias TestDatabase = DatabaseImpl!(
         (url, cmd) => manages ~= ["url": url, "cmd": cmd],
         (url, db, query) {
-            import std.json;
             queries ~= ["url": url, "db": db, "query": query];
-            return parseJSON(`{}`);
+            return `{}`;
         },
         (url, db, line) => writes ~= ["url": url, "db": db, "line": line]
     );
@@ -81,6 +79,22 @@ struct DatabaseImpl(alias manageFunc, alias queryFunc, alias writeFunc) {
     queries.shouldBeEmpty;
     database.query("SELECT * from foo");
     queries.shouldEqual([["url": "http://db.com", "db": "testdb", "query": "SELECT * from foo"]]);
+}
+
+struct Response {
+    Result[] results;
+}
+
+struct Result {
+    Table[] series;
+    int statement_id;
+}
+
+struct Table {
+    import asdf: serializationFlexible;
+    string[] columns;
+    string name;
+    @serializationFlexible string[][] values;
 }
 
 
