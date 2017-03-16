@@ -25,29 +25,47 @@ struct DatabaseImpl(alias manageFunc, alias queryFunc, alias writeFunc) {
         manage("CREATE DATABASE " ~ db);
     }
 
+    /**
+       Sends management commands to the DB (CREATE, DROP).
+       The parameter must be the full command (e.g. "DROP DATABASE mydb")
+     */
     void manage(in string cmd) const {
         manageFunc(url, cmd);
     }
 
+    /**
+       Queries the DB. The query must be a full InfluxDB query
+       (e.g. "SELECT * FROM foo")
+     */
     Response query(in string query) @trusted const { // deserialize is @system
         import asdf: deserialize;
         return queryFunc(url, db, query).deserialize!Response;
     }
 
+    /**
+       Insert data into the DB.
+     */
     void insert(in Measurement[] measurements) const {
         foreach(ref const m; measurements)
             writeFunc(url, db, m.toString);
     }
 
+    /**
+       Insert data into the DB.
+     */
     void insert(in Measurement[] measurements...) const {
         insert(measurements);
     }
 
+    /*
+      Delete this DB
+     */
     void drop() const {
         manage("DROP DATABASE " ~ db);
     }
 }
 
+///
 @("Database")
 @safe unittest { // not pure because of asdf.deserialize
 
@@ -107,7 +125,9 @@ struct DatabaseImpl(alias manageFunc, alias queryFunc, alias writeFunc) {
     );
 }
 
-
+/**
+   An InfluxDB measurement
+ */
 struct Measurement {
 
     import std.datetime: SysTime;
@@ -159,7 +179,7 @@ struct Measurement {
     }
 }
 
-
+///
 @("Measurement.toString no timestamp")
 @safe pure unittest {
     {
@@ -197,15 +217,24 @@ struct Measurement {
 }
 
 
+/**
+   A query response
+ */
 struct Response {
     Result[] results;
 }
 
+/**
+   A result of a query
+ */
 struct Result {
     MeasurementSeries[] series;
     int statement_id;
 }
 
+/**
+   Data for one measurement
+ */
 struct MeasurementSeries {
 
     import asdf: serializationIgnoreIn, Asdf;
@@ -280,7 +309,8 @@ struct MeasurementSeries {
     }
 }
 
-@("MeasurementSeries.rows")
+///
+@("MeasurementSeries")
 @safe unittest {
 
     import std.datetime: SysTime, DateTime, UTC;
