@@ -1,9 +1,6 @@
 module influxdb.vibe;
 
 
-import std.json: JSONValue;
-
-
 struct Database {
 
     import influxdb.api;
@@ -23,7 +20,11 @@ struct Database {
         .manage(url, cmd);
     }
 
-    JSONValue query(in string query) {
+    /**
+       Returns a JSON object. The return type is auto to avoid
+       the top-level import based on the parsing function.
+    */
+    auto query(in string query) {
         return .query(url, db, query);
     }
 
@@ -46,8 +47,13 @@ void manage(in string url, in string str) {
     vibePostQuery(url, "q=" ~ str);
 }
 
-JSONValue query(in string url, in string db, in string query) {
-    return vibeGet(url, db, query);
+/**
+   Returns a JSON object. The return type is auto to avoid
+   the top-level import based on the parsing function.
+ */
+auto query(in string url, in string db, in string query) {
+    import std.json: parseJSON;
+    return vibeGet(url, db, query).parseJSON;
 }
 
 void write(in string url, in string db, in string line) {
@@ -70,7 +76,7 @@ private string vibePostWrite(in string url, in string db, in string str,
 }
 
 
-private JSONValue vibeGet(in string url, in string db, in string arg,
+private string vibeGet(in string url, in string db, in string arg,
                           in string file = __FILE__, in size_t line = __LINE__) {
 
     import std.algorithm: map;
@@ -79,8 +85,7 @@ private JSONValue vibeGet(in string url, in string db, in string arg,
     import std.json: parseJSON;
 
     const fullUrl = url ~ "/query?" ~ ["db=" ~ db, "q=" ~ arg].map!urlEncode.array.join("&");
-    const jsonString =  vibeHttpRequest(fullUrl, [], file, line);
-    return jsonString.parseJSON;
+    return vibeHttpRequest(fullUrl, [], file, line);
 }
 
 private string vibeHttpRequest(in string url,
