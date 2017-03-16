@@ -51,7 +51,7 @@ void shouldBeSameJsonAs(in string actual,
                         in string expected,
                         in string file = __FILE__,
                         in size_t line = __LINE__)
-    @safe
+    @trusted // parseJSON
 {
     import std.json;
     actual.parseJSON.toPrettyString.shouldEqual(expected.parseJSON.toPrettyString, file, line);
