@@ -1,5 +1,5 @@
 language: d
-dist: trusty
+dist: precise
 sudo: false
 
 addons:
