@@ -83,19 +83,19 @@ unittest {
         const lines = curlGet("SELECT * from foo").shouldSucceed;
         const json = lines.join(" ").find("{").parseJSON;
         const result = json.object["results"].array[0].object;
-        const point = result["series"].array[0].object;
-        point["columns"].array.map!(a => a.str).shouldBeSameSetAs(
+        const table = result["series"].array[0].object;
+        table["columns"].array.map!(a => a.str).shouldBeSameSetAs(
             ["time", "othervalue", "tag1", "tag2", "value"]);
-        point["name"].str.shouldEqual("foo");
-        point["values"].array.length.shouldEqual(2);
+        table["name"].str.shouldEqual("foo");
+        table["values"].array.length.shouldEqual(2);
     }
 
     {
         const lines = curlGet("SELECT value from foo WHERE value > 1").shouldSucceed;
         const json = lines.join(" ").find("{").parseJSON;
         const result = json.object["results"].array[0].object;
-        const point = result["series"].array[0].object;
-        point["values"].array.length.shouldEqual(1);
+        const table = result["series"].array[0].object;
+        table["values"].array.length.shouldEqual(1);
     }
 
     {

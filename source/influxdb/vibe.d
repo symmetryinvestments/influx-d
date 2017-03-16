@@ -1,47 +1,6 @@
 module influxdb.vibe;
 
 
-struct Database {
-
-    import influxdb.api;
-
-    string url; // e.g. http://localhost:8086
-    string db;  // e.g. mydb
-
-    @disable this();
-    this(string url, string db) {
-        this.url = url;
-        this.db = db;
-
-        manage("CREATE DATABASE " ~ db);
-    }
-
-    void manage(in string cmd) {
-        .manage(url, cmd);
-    }
-
-    /**
-       Returns a JSON object. The return type is auto to avoid
-       the top-level import based on the parsing function.
-    */
-    auto query(in string query) {
-        return .query(url, db, query);
-    }
-
-    void insert(in Measurement[] measurements) {
-        foreach(ref const m; measurements)
-            .write(url, db, m.toString);
-    }
-
-    void insert(in Measurement[] measurements...) {
-        insert(measurements);
-    }
-
-    void drop() {
-        manage("DROP DATABASE " ~ db);
-    }
-}
-
 
 void manage(in string url, in string str) {
     vibePostQuery(url, "q=" ~ str);

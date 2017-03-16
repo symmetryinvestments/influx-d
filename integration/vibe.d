@@ -42,6 +42,24 @@ unittest {
     json.shouldEqual(expected);
 }
 
+/*
+  Example of a response (prettified):
+  {
+    "results": [{
+            "series": [{
+                    "columns": ["time", "othervalue", "tag1", "tag2", "value"],
+                    "name": "foo",
+                    "values": [
+                            ["2015-06-11T20:46:02Z", 4, "toto", "titi", 2],
+                            ["2017-03-14T23:15:01.06282785Z", 3, "letag", "othertag", 1]
+                    ]
+            }],
+            "statement_id": 0
+    }]
+ }
+*/
+
+
 @Serial
 @("query database with data")
 unittest {
@@ -63,11 +81,11 @@ unittest {
     {
         const json = query(influxURL, "test_vibe_db", "SELECT * from foo");
         const result = json.object["results"].array[0].object;
-        const point = result["series"].array[0].object;
-        point["columns"].array.map!(a => a.str).shouldBeSameSetAs(
+        const table = result["series"].array[0].object;
+        table["columns"].array.map!(a => a.str).shouldBeSameSetAs(
             ["time", "othervalue", "tag1", "tag2", "value"]);
-        point["name"].str.shouldEqual("foo");
-        point["values"].array.length.shouldEqual(2);
+        table["name"].str.shouldEqual("foo");
+        table["values"].array.length.shouldEqual(2);
     }
 }
 
@@ -76,8 +94,7 @@ unittest {
 @("Database api")
 unittest {
 
-    import influxdb.vibe: Database;
-    import influxdb.api;
+    import influxdb.api: Database, Measurement;
 
     auto database = Database(influxURL, "myspecialDB");
     scope(exit) database.drop;
@@ -88,15 +105,15 @@ unittest {
     {
         const json = database.query("SELECT * from cpu");
         const result = json.object["results"].array[0].object;
-        const point = result["series"].array[0].object;
-        point["values"].array.length.shouldEqual(2);
+        const table = result["series"].array[0].object;
+        table["values"].array.length.shouldEqual(2);
     }
 
     {
         const json = database.query("SELECT * from cpu WHERE temperature > 50");
         const result = json.object["results"].array[0].object;
-        const point = result["series"].array[0].object;
-        point["values"].array.length.shouldEqual(1);
+        const table = result["series"].array[0].object;
+        table["values"].array.length.shouldEqual(1);
     }
 }
 
