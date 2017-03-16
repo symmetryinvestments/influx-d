@@ -12,7 +12,7 @@ install:
   - sudo -E apt-get -yq --no-install-suggests --no-install-recommends --force-yes install influxdb libevent-dev
 
 before_script:
-  - udo service influxdb start
+  - sudo service influxdb start
 
 script:
   - dub test
