@@ -11,8 +11,12 @@ before_install:
 install:
   - sudo -E apt-get -yq --no-install-suggests --no-install-recommends --force-yes install influxdb libevent-dev
 
-services:
-  - influxdb
+before_script:
+  - udo service influxdb start
+
+script:
+  - dub test
+  - dub run -c integration
 
 matrix:
     include:
@@ -20,7 +24,3 @@ matrix:
         - d: dmd-2.071.2
         - d: dmd-2.070.2
         - d: ldc
-
-script:
-  - dub test
-  - dub run -c integration
