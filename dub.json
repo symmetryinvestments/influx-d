@@ -8,7 +8,7 @@
         "asdf": "~>0.1.1"
     },
     "description": "InfluxDB wrapper",
-    "copyright": "Copyright © 2017, Atila Neves",
+    "copyright": "Copyright © 2017, Kaleidic Associates Ltd",
     "license": "BSD 3-clause",
     "targetType": "library",
     "sourcePaths": ["source"],
