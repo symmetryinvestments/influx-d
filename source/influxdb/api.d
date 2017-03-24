@@ -137,8 +137,6 @@ struct Measurement {
     string[string] fields;
     long timestamp;
 
-    @disable this();
-
     this(string name,
          string[string] fields,
          SysTime time = SysTime.fromUnixTime(0))
