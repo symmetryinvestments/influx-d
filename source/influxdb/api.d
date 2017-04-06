@@ -259,6 +259,13 @@ struct MeasurementSeries {
                 import std.algorithm: countUntil;
                 return columnValues[columnNames.countUntil(key)];
             }
+         
+            string get(string key, string defaultValue) @safe pure const {
+                import std.algorithm: countUntil;
+                auto i = columnNames.countUntil(key);
+                return (i==-1) ? defaultValue : columnValues[i];
+            }
+
 
             SysTime time() @safe const {
                 return SysTime.fromISOExtString(this["time"]);
