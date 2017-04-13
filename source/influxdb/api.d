@@ -316,16 +316,28 @@ struct MeasurementSeries {
 
     auto series = MeasurementSeries("coolness",
                                     ["time", "foo", "bar"],
-                                    [["2015-06-11T20:46:02Z", "red", "blue"]]);
+                                    [
+                                        ["2015-06-11T20:46:02Z", "red", "blue"],
+                                        ["2013-02-09T12:34:56Z", "green", "yellow"],
+                                    ]);
 
     series.rows[0]["foo"].shouldEqual("red");
     series.rows[0]["time"].shouldEqual("2015-06-11T20:46:02Z");
     series.rows[0].time.shouldEqual(SysTime(DateTime(2015, 06, 11, 20, 46, 2), UTC()));
 
+    series.rows[1]["bar"].shouldEqual("yellow");
+    series.rows[1]["time"].shouldEqual("2013-02-09T12:34:56Z");
+    series.rows[1].time.shouldEqual(SysTime(DateTime(2013, 2, 9, 12, 34, 56), UTC()));
+
+
     series.rows.array.shouldEqual(
         [
             MeasurementSeries.Rows.Row(["time", "foo", "bar"],
-                                       ["2015-06-11T20:46:02Z", "red", "blue"]),
+                                       ["2015-06-11T20:46:02Z", "red", "blue"],
+                                       ),
+            MeasurementSeries.Rows.Row(["time", "foo", "bar"],
+                                       ["2013-02-09T12:34:56Z", "green", "yellow"],
+                                       ),
         ]
     );
 }
