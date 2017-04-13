@@ -31,3 +31,22 @@ unittest {
         series.rows.length.shouldEqual(1);
     }
 }
+
+@Serial
+@("Database multiple inserts")
+unittest {
+
+    import influxdb.api: Database, Measurement;
+
+    const database = Database(influxURL, "myspecialDB");
+    scope(exit) database.drop;
+
+    database.insert(Measurement("cpu", ["tag1": "foo"], ["temperature": "42"]),
+                    Measurement("cpu", ["tag1": "bar"], ["temperature": "68"]),
+                    Measurement("cpu", ["tag1": "baz"], ["temperature": "54"]));
+
+    const response = database.query("SELECT * from cpu WHERE temperature > 50");
+    const result = response.results[0];
+    const series = result.series[0];
+    series.rows.length.shouldEqual(2);
+}

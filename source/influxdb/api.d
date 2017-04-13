@@ -46,8 +46,9 @@ struct DatabaseImpl(alias manageFunc, alias queryFunc, alias writeFunc) {
        Insert data into the DB.
      */
     void insert(in Measurement[] measurements) const {
-        foreach(ref const m; measurements)
-            writeFunc(url, db, m.toString);
+        import std.algorithm: map;
+        import std.array: array, join;
+        writeFunc(url, db, measurements.map!(a => a.toString).array.join("\n"));
     }
 
     /**
@@ -74,8 +75,8 @@ struct DatabaseImpl(alias manageFunc, alias queryFunc, alias writeFunc) {
     string[string][] writes;
 
     alias TestDatabase = DatabaseImpl!(
-        (url, cmd) => manages ~= ["url": url, "cmd": cmd],
-        (url, db, query) {
+        (url, cmd) => manages ~= ["url": url, "cmd": cmd], // manage
+        (url, db, query) { // query
             queries ~= ["url": url, "db": db, "query": query];
             return
             `{
@@ -123,6 +124,33 @@ struct DatabaseImpl(alias manageFunc, alias queryFunc, alias writeFunc) {
             ]
         )
     );
+}
+
+@("insert")
+@safe unittest {
+
+    string[] lines;
+
+    alias TestDatabase = DatabaseImpl!(
+        (url, cmd) { }, // manage
+        (url, db, query) => `{}`, // query
+        (url, db, line) => lines ~= line // write
+    );
+
+    const database = TestDatabase("http://db.com", "testdb");
+    database.insert(
+        Measurement("cpu", ["index": "1"], ["temperature": "42"]),
+        Measurement("cpu", ["index": "2"], ["temperature": "42"]),
+        Measurement("cpu", ["index": "2"], ["temperature": "42"]),
+    );
+
+    () @trusted {
+        lines.shouldEqual(
+            [
+                "cpu,index=1 temperature=42\ncpu,index=2 temperature=42\ncpu,index=2 temperature=42",
+            ]
+        );
+    }();
 }
 
 /**
