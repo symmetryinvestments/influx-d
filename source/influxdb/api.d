@@ -286,6 +286,12 @@ struct MeasurementSeries {
                 return columnValues[columnNames.countUntil(key)];
             }
 
+            string get(string key, string defaultValue) @safe pure const {
+                import std.algorithm: countUntil;
+                auto i = columnNames.countUntil(key);
+                return (i==-1) ? defaultValue : columnValues[i];
+            }
+
             SysTime time() @safe const {
                 return SysTime.fromISOExtString(this["time"]);
             }
@@ -368,6 +374,15 @@ struct MeasurementSeries {
                                        ),
         ]
     );
+}
+
+@("MeasurementSeries.get")
+@safe pure unittest {
+    auto series = MeasurementSeries("coolness",
+                                    ["time", "foo", "bar"],
+                                    [["2015-06-11T20:46:02Z", "red", "blue"]]);
+    series.rows[0].get("foo", "oops").shouldEqual("red");
+    series.rows[0].get("quux", "oops").shouldEqual("oops");
 }
 
 
