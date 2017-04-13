@@ -46,8 +46,9 @@ struct DatabaseImpl(alias manageFunc, alias queryFunc, alias writeFunc) {
        Insert data into the DB.
      */
     void insert(in Measurement[] measurements) const {
-        foreach(ref const m; measurements)
-            writeFunc(url, db, m.toString);
+        import std.algorithm: map;
+        import std.array: array, join;
+        writeFunc(url, db, measurements.map!(a => a.toString).array.join("\n"));
     }
 
     /**
@@ -146,9 +147,7 @@ struct DatabaseImpl(alias manageFunc, alias queryFunc, alias writeFunc) {
     () @trusted {
         lines.shouldEqual(
             [
-                "cpu,index=1 temperature=42",
-                "cpu,index=2 temperature=42",
-                "cpu,index=2 temperature=42",
+                "cpu,index=1 temperature=42\ncpu,index=2 temperature=42\ncpu,index=2 temperature=42",
             ]
         );
     }();
