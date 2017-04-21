@@ -8,7 +8,8 @@ Generated documentation:
 
 [API documentation](http://influxdb.code.kaleidic.io/influxdb.html)
 
-Getting started tutorial (hopefully self-explanatory):
+Getting started tutorial (hopefully self-explanatory)
+-----------------------------------------------------
 
 ```d
 
