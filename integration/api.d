@@ -1,3 +1,12 @@
+/**
+    This module implements integration tests for Influx API
+
+    Authors: Atila Neves (Kaleidic Associates Advisory Limited)
+
+    Generated documentation:
+        http://influxdb.code.kaleidic.io/influxdb.html
+
+*/
 module integration.api;
 
 import unit_threaded;
@@ -5,6 +14,7 @@ import influxdb;
 import integration.common: influxURL;
 
 
+///
 @Serial
 @("Database api")
 unittest {
@@ -32,6 +42,7 @@ unittest {
     }
 }
 
+///
 @Serial
 @("Database multiple inserts")
 unittest {
