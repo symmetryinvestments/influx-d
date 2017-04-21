@@ -1,5 +1,5 @@
 {
-    "name": "influxdb-dlang-wrapper",
+    "name": "influx-d",
     "authors": [
         "Atila Neves"
     ],
@@ -25,7 +25,7 @@
             "preBuildCommands": ["dub run unit-threaded -c gen_ut_main -- -f bin/ut.d"],
             "mainSourceFile": "bin/ut.d",
             "dependencies": {
-                "unit-threaded": "~>0.7.7"
+                "unit-threaded": "~>0.7.0"
             }
         },
         {
@@ -35,7 +35,7 @@
             "sourcePaths": ["source", "integration"],
             "dflags": ["-unittest"],
             "dependencies": {
-                "unit-threaded": "~>0.7.7"
+                "unit-threaded": "~>0.7.0"
             }
 
         }
