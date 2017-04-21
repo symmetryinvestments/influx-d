@@ -1,15 +1,26 @@
+/**
+    This module implements a convenience wrapper API for influx.
+
+    Authors: Atila Neves (Kaleidic Associates Advisory Limited)
+
+    Generated documentation:
+        http://influxdb.code.kaleidic.io/influxdb.html
+
+*/
+
 module influxdb.api;
 
 static import influxdb.vibe;
 version(unittest) import unit_threaded;
 
+///
 alias Database = DatabaseImpl!(influxdb.vibe.manage, influxdb.vibe.query, influxdb.vibe.write);
 
 /**
- Holds information about the database name and URL, forwards
- it to the implemetation functions for managing, querying and
- writing to the DB
- */
+    Holds information about the database name and URL, forwards
+    it to the implemetation functions for managing, querying and
+    writing to the DB
+*/
 struct DatabaseImpl(alias manageFunc, alias queryFunc, alias writeFunc) {
 
     import influxdb.api;
@@ -58,7 +69,7 @@ struct DatabaseImpl(alias manageFunc, alias queryFunc, alias writeFunc) {
         insert(measurements);
     }
 
-    /*
+    /**
       Delete this DB
      */
     void drop() const {
@@ -126,6 +137,7 @@ struct DatabaseImpl(alias manageFunc, alias queryFunc, alias writeFunc) {
     );
 }
 
+///
 @("insert")
 @safe unittest {
 
@@ -223,6 +235,7 @@ struct Measurement {
     }
 }
 
+///
 @("Measurement.toString no timestamp no tags")
 @safe pure unittest {
     auto m = Measurement("cpu",
@@ -230,6 +243,7 @@ struct Measurement {
     m.toString.shouldEqualLine("cpu load=42,temperature=53");
 }
 
+///
 @("Measurement.toString with timestamp")
 @safe pure unittest {
 
@@ -376,6 +390,7 @@ struct MeasurementSeries {
     );
 }
 
+///
 @("MeasurementSeries.get")
 @safe pure unittest {
     auto series = MeasurementSeries("coolness",
@@ -388,6 +403,7 @@ struct MeasurementSeries {
 
 version(unittest) {
     /**
+    Example:
        The two lines must be equivalent under InfluxDB's line protocol
        Since the tags and fields aren't ordered, a straight comparison
        might yield false errors.

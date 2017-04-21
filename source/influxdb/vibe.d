@@ -1,15 +1,26 @@
+/**
+    This module implements utility functions for Influx API using vibe-d
+
+    Authors: Atila Neves (Kaleidic Associates Advisory Limited)
+
+    Generated documentation:
+        http://influxdb.code.kaleidic.io/influxdb.html
+
+*/
 module influxdb.vibe;
 
 
-
+///
 void manage(in string url, in string str) {
     vibePostQuery(url, "q=" ~ str);
 }
 
+///
 string query(in string url, in string db, in string query) {
     return vibeGet(url, db, query);
 }
 
+///
 void write(in string url, in string db, in string line) {
     vibePostWrite(url, db, line);
 }
@@ -72,6 +83,7 @@ private string vibeHttpRequest(in string url,
 
 }
 
+///
 string urlEncode(in string str) {
     import vibe.textfilter.urlencode: filterURLEncode;
     import std.array: appender;

@@ -1,3 +1,12 @@
+/**
+    This module implements integration tests for Influx API
+
+    Authors: Atila Neves (Kaleidic Associates Advisory Limited)
+
+    Generated documentation:
+        http://influxdb.code.kaleidic.io/influxdb.html
+
+*/
 module integration.asdf;
 
 import asdf;
@@ -5,6 +14,7 @@ import influxdb.api;
 import unit_threaded;
 
 
+///
 @("deserialise Response")
 @system unittest {
     enum jsonString = `
@@ -47,6 +57,9 @@ import unit_threaded;
 }
 
 
+/**
+    Example:
+*/
 void shouldBeSameJsonAs(in string actual,
                         in string expected,
                         in string file = __FILE__,

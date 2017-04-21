@@ -9,13 +9,14 @@
  `systemctl start influxdb`.
 
  If these tests fail, nothing else in this repository will work.
- */
+*/
 module integration.curl;
 
 import unit_threaded;
 import integration.common: influxURL;
 
 
+///
 @Serial
 @("Create and drop")
 unittest {
@@ -23,12 +24,14 @@ unittest {
     curlPostQuery("DROP DATABASE testdb").shouldSucceed;
 }
 
+///
 @Serial
 @("Nonsense query")
 unittest {
     curlPostQuery("FOO DATABASE testdb").shouldFail;
 }
 
+///
 @Serial
 @("Query empty database")
 unittest {
@@ -47,6 +50,7 @@ unittest {
 }
 
 
+///
 @Serial
 @("Query database with data")
 unittest {

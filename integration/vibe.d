@@ -10,6 +10,7 @@ import influxdb.vibe: manage, query, write;
 import std.json: JSONValue, parseJSON;
 
 
+///
 @Serial
 @("manage")
 unittest {
@@ -22,6 +23,7 @@ unittest {
 }
 
 
+///
 @Serial
 @("query empty database")
 unittest {
@@ -42,7 +44,7 @@ unittest {
     json.shouldEqual(expected);
 }
 
-/*
+/**
   Example of a response (prettified):
   {
     "results": [{
@@ -60,6 +62,7 @@ unittest {
 */
 
 
+///
 @Serial
 @("query database with data")
 unittest {
