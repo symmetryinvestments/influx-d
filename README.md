@@ -2,7 +2,8 @@
 
 D programming language wrapper for InfluxDB.
 
-Generated documentation:
+Generated documentation
+-----------------------
 
 [Integration Tests/Examples](http://influxdb.code.kaleidic.io/integration.html)
 
