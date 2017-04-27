@@ -5,3 +5,5 @@ __dummy.html
 *.obj
 __test__*__
 bin
+*.lib
+*.dll

@@ -4,7 +4,7 @@
         "Atila Neves"
     ],
     "dependencies": {
-        "vibe-d": "~>0.8.0-beta.5",
+        "vibe-d:http": "~>0.8.0-beta.5",
         "asdf": "~>0.1.1"
     },
     "description": "InfluxDB wrapper",
@@ -22,7 +22,6 @@
             "name": "unittest",
             "targetType": "executable",
             "targetName": "bin/ut",
-            "preBuildCommands": ["dub run unit-threaded -c gen_ut_main -- -f bin/ut.d"],
             "mainSourceFile": "bin/ut.d",
             "dependencies": {
                 "unit-threaded": "~>0.7.0"
