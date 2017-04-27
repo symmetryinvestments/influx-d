@@ -33,7 +33,6 @@
             "targetType": "executable",
             "targetName": "bin/it",
             "sourcePaths": ["source", "integration"],
-            "dflags": ["-unittest"],
             "dependencies": {
                 "unit-threaded": "~>0.7.0"
             }

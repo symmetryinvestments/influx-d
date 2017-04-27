@@ -16,7 +16,7 @@ before_script:
 
 script:
   - dub test
-  - dub run -c integration
+  - dub run --build=unittest -c integration
 
 matrix:
     include:
