@@ -9,8 +9,8 @@
 		"memutils": "0.4.9",
 		"openssl": "1.1.5+1.0.1g",
 		"taggedalgebraic": "0.10.5",
-		"unit-threaded": "0.7.16",
-		"vibe-core": "1.0.0-beta.5",
+		"unit-threaded": "0.7.17",
+		"vibe-core": "1.0.0-beta.6",
 		"vibe-d": "0.8.0-beta.5"
 	}
 }

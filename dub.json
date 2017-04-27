@@ -4,7 +4,7 @@
         "Atila Neves"
     ],
     "dependencies": {
-        "vibe-d:http": "~>0.8.0-beta.5",
+        "vibe-d": "~>0.8.0-beta.5",
         "asdf": "~>0.1.1"
     },
     "description": "InfluxDB wrapper",
@@ -13,6 +13,7 @@
     "targetType": "library",
     "sourcePaths": ["source"],
     "versions": ["unitUnthreaded"],
+    "subConfigurations": {"vibe-d": "vibe-core"},
 
     "configurations": [
 
