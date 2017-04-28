@@ -29,6 +29,7 @@ struct DatabaseImpl(alias manageFunc, alias queryFunc, alias writeFunc) {
     string db;  // e.g. mydb
 
     @disable this();
+
     this(string url, string db) {
         this.url = url;
         this.db = db;
@@ -182,7 +183,7 @@ struct Measurement {
          SysTime time = SysTime.fromUnixTime(0))
     @safe pure nothrow {
         string[string] tags;
-        this(name, tags, fields);
+        this(name, tags, fields, time);
     }
 
     this(string name,
@@ -254,6 +255,18 @@ struct Measurement {
                          ["load": "42", "temperature": "53"],
                          SysTime.fromUnixTime(7));
     m.toString.shouldEqualLine("cpu,tag1=toto,tag2=foo load=42,temperature=53 7");
+}
+
+///
+@("Measurement.toString with timestamp no tags")
+@safe pure unittest {
+
+    import std.datetime: SysTime;
+
+    auto m = Measurement("cpu",
+                         ["load": "42", "temperature": "53"],
+                         SysTime.fromUnixTime(7));
+    m.toString.shouldEqualLine("cpu load=42,temperature=53 7");
 }
 
 
