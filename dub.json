@@ -13,7 +13,13 @@
     "targetType": "library",
     "sourcePaths": ["source"],
     "versions": ["unitUnthreaded"],
-    "subConfigurations": {"vibe-d": "vibe-core"},
+
+    "libs-posix": [
+        "ssl",
+        "crypto",
+        ":libssl.so.1.0.0",
+        ":libcrypto.so.1.0.0"
+    ],
 
     "configurations": [
 
