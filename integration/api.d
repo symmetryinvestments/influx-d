@@ -87,7 +87,7 @@ unittest {
         const response = database.query("SELECT * from cpu WHERE time >= '2016-01-01 00:00:00'");
         const result = response.results[0];
         const series = result.series[0];
-        series.rows.length.shouldEqual(0);
+        series.rows.length.shouldEqual(1);
     }
 
 }
