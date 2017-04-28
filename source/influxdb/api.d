@@ -194,7 +194,8 @@ struct Measurement {
         this.name = name;
         this.tags = tags;
         this.fields = fields;
-        this.timestamp = time.toUnixTime;
+        // InfluxDB uses UNIX time in _nanoseconds_
+        this.timestamp = time.toUnixTime!long * 1_000_000_000L;
     }
 
     string toString() @safe pure const {
@@ -254,7 +255,7 @@ struct Measurement {
                          ["tag1": "toto", "tag2": "foo"],
                          ["load": "42", "temperature": "53"],
                          SysTime.fromUnixTime(7));
-    m.toString.shouldEqualLine("cpu,tag1=toto,tag2=foo load=42,temperature=53 7");
+    m.toString.shouldEqualLine("cpu,tag1=toto,tag2=foo load=42,temperature=53 7000000000");
 }
 
 ///
@@ -266,7 +267,7 @@ struct Measurement {
     auto m = Measurement("cpu",
                          ["load": "42", "temperature": "53"],
                          SysTime.fromUnixTime(7));
-    m.toString.shouldEqualLine("cpu load=42,temperature=53 7");
+    m.toString.shouldEqualLine("cpu load=42,temperature=53 7000000000");
 }
 
 
