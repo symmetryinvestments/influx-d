@@ -181,7 +181,7 @@ struct Measurement {
     this(string name,
          string[string] fields,
          SysTime time = SysTime.fromUnixTime(0))
-    @safe pure nothrow {
+    @safe nothrow {
         string[string] tags;
         this(name, tags, fields, time);
     }
@@ -190,12 +190,17 @@ struct Measurement {
          string[string] tags,
          string[string] fields,
          SysTime time = SysTime.fromUnixTime(0))
-    @safe pure nothrow {
+    @safe nothrow { // impure due to SysTime.fracSecs
+
+        import std.datetime: nsecs;
+
         this.name = name;
         this.tags = tags;
         this.fields = fields;
         // InfluxDB uses UNIX time in _nanoseconds_
-        this.timestamp = time.toUnixTime!long * 1_000_000_000L;
+        // stdTime is in hnsecs
+        //this.timestamp = time.stdTime / 100;
+        this.timestamp = (time.toUnixTime!long * 1_000_000_000 + time.fracSecs.split!"nsecs".nsecs);
     }
 
     string toString() @safe pure const {
@@ -221,7 +226,7 @@ struct Measurement {
 
 ///
 @("Measurement.toString no timestamp")
-@safe pure unittest {
+@safe unittest {
     {
         auto m = Measurement("cpu",
                              ["tag1": "toto", "tag2": "foo"],
@@ -239,7 +244,7 @@ struct Measurement {
 
 ///
 @("Measurement.toString no timestamp no tags")
-@safe pure unittest {
+@safe unittest {
     auto m = Measurement("cpu",
                          ["load": "42", "temperature": "53"]);
     m.toString.shouldEqualLine("cpu load=42,temperature=53");
@@ -247,7 +252,7 @@ struct Measurement {
 
 ///
 @("Measurement.toString with timestamp")
-@safe pure unittest {
+@safe unittest {
 
     import std.datetime: SysTime;
 
@@ -260,7 +265,7 @@ struct Measurement {
 
 ///
 @("Measurement.toString with timestamp no tags")
-@safe pure unittest {
+@safe unittest {
 
     import std.datetime: SysTime;
 
@@ -270,6 +275,14 @@ struct Measurement {
     m.toString.shouldEqualLine("cpu load=42,temperature=53 7000000000");
 }
 
+@("Measurement nanoseconds")
+@safe unittest {
+    import std.datetime: DateTime, SysTime, Duration, nsecs;
+    auto m = Measurement("cpu",
+                         ["load": "42", "temperature": "53"],
+                         SysTime(DateTime(2017, 2, 1), 700.nsecs));
+    m.toString.shouldEqualLine("cpu load=42,temperature=53 1485903600000000700");
+}
 
 /**
    A query response
