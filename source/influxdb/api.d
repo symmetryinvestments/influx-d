@@ -277,11 +277,11 @@ struct Measurement {
 
 @("Measurement nanoseconds")
 @safe unittest {
-    import std.datetime: DateTime, SysTime, Duration, nsecs;
+    import std.datetime: DateTime, SysTime, Duration, nsecs, UTC;
     auto m = Measurement("cpu",
                          ["load": "42", "temperature": "53"],
-                         SysTime(DateTime(2017, 2, 1), 700.nsecs));
-    m.toString.shouldEqualLine("cpu load=42,temperature=53 1485903600000000700");
+                         SysTime(DateTime(2017, 2, 1), 700.nsecs, UTC()));
+    m.toString.shouldEqualLine("cpu load=42,temperature=53 1485907200000000700");
 }
 
 /**
