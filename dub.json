@@ -14,16 +14,18 @@
     "sourcePaths": ["source"],
     "versions": ["unitUnthreaded"],
 
-    "libs-posix": [
-        "ssl",
-        "crypto",
-        ":libssl.so.1.0.0",
-        ":libcrypto.so.1.0.0"
-    ],
-
     "configurations": [
 
         {"name": "library" },
+        {
+            "name": "library-ssl-1.1",
+            "libs-posix": [
+                "ssl",
+                "crypto",
+                ":libssl.so.1.0.0",
+                ":libcrypto.so.1.0.0"
+            ]
+        },
 
         {
             "name": "unittest",
@@ -34,6 +36,23 @@
                 "unit-threaded": "~>0.7.0"
             }
         },
+
+        {
+            "name": "unittest-ssl-1.1",
+            "targetType": "executable",
+            "targetName": "bin/ut",
+            "mainSourceFile": "bin/ut.d",
+            "dependencies": {
+                "unit-threaded": "~>0.7.0"
+            },
+            "libs-posix": [
+                "ssl",
+                "crypto",
+                ":libssl.so.1.0.0",
+                ":libcrypto.so.1.0.0"
+            ]
+        },
+
         {
             "name": "integration",
             "targetType": "executable",
@@ -43,8 +62,22 @@
                 "unit-threaded": "~>0.7.0"
             }
 
+        },
+        {
+            "name": "integration-ssl-1.1",
+            "targetType": "executable",
+            "targetName": "bin/it",
+            "sourcePaths": ["source", "integration"],
+            "dependencies": {
+                "unit-threaded": "~>0.7.0"
+            },
+            "libs-posix": [
+                "ssl",
+                "crypto",
+                ":libssl.so.1.0.0",
+                ":libcrypto.so.1.0.0"
+            ]
         }
-
     ]
 
 }
