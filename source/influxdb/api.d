@@ -200,7 +200,7 @@ struct Measurement {
         // InfluxDB uses UNIX time in _nanoseconds_
         // stdTime is in hnsecs
         //this.timestamp = time.stdTime / 100;
-        this.timestamp = (time.toUnixTime!long * 1_000_000_000 + time.fracSecs.split!"nsecs".nsecs);
+        this.timestamp = (time.toUnixTime!long * 1_000_000_000 + time.fracSecs.total!"nsecs");
     }
 
     string toString() @safe pure const {
@@ -275,13 +275,13 @@ struct Measurement {
     m.toString.shouldEqualLine("cpu load=42,temperature=53 7000000000");
 }
 
-@("Measurement nanoseconds")
+@("Measurement fraction of a second")
 @safe unittest {
-    import std.datetime: DateTime, SysTime, Duration, nsecs, UTC;
+    import std.datetime: DateTime, SysTime, Duration, usecs, nsecs, UTC;
     auto m = Measurement("cpu",
                          ["load": "42", "temperature": "53"],
-                         SysTime(DateTime(2017, 2, 1), 700.nsecs, UTC()));
-    m.toString.shouldEqualLine("cpu load=42,temperature=53 1485907200000000700");
+                         SysTime(DateTime(2017, 2, 1), 300.usecs + 700.nsecs, UTC()));
+    m.toString.shouldEqualLine("cpu load=42,temperature=53 1485907200000300700");
 }
 
 /**
