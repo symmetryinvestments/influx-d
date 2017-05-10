@@ -334,8 +334,46 @@ struct MeasurementSeries {
             }
 
             SysTime time() @safe const {
-                return SysTime.fromISOExtString(this["time"]);
+
+                import std.datetime: DateTimeException;
+
+                try {
+                    return SysTime.fromISOExtString(this["time"]);
+                } catch(DateTimeException ex) {
+                    // see https://issues.dlang.org/show_bug.cgi?id=16053
+                    import std.stdio: stderr;
+                    import std.algorithm: countUntil;
+
+                    debug stderr.writeln("Could not convert ", this["time"], " due to a Phobos bug, reducing precision");
+
+                    // find where the fractional part starts
+                    auto dotIndex = this["time"].countUntil(".");
+                    if(dotIndex < 0)
+                        dotIndex = this["time"].countUntil(",");
+                    if(dotIndex < 0)
+                        throw ex;
+
+
+                    const firstNonDigitIndex = this["time"][dotIndex + 1 .. $].countUntil!(a => a < '0' || a > '9') + dotIndex + 1;
+                    if(firstNonDigitIndex < 0) throw ex;
+
+                    const lastDigitIndex = firstNonDigitIndex - 1;
+
+                    foreach(i; 0 .. 4) {
+                        // try to cut out a number from the fraction
+                        // inaccurate but better than throwing an exception
+                        const timeStr =
+                            this["time"][0 .. lastDigitIndex - i] ~
+                            this["time"][firstNonDigitIndex .. $];
+                        try
+                            return SysTime.fromISOExtString(timeStr);
+                        catch(DateTimeException _) {}
+                    }
+
+                    throw ex;
+                }
             }
+
             string toString() @safe const pure nothrow {
 
                 import std.string: join;
@@ -427,11 +465,27 @@ struct MeasurementSeries {
     series.rows[0].get("quux", "oops").shouldEqual("oops");
 }
 
+///
+@("MeasurementSeries long fraction in ISOExtString")
+@safe unittest {
+
+    import std.datetime: SysTime, DateTime, UTC, usecs;
+    import std.array: array;
+
+    auto series = MeasurementSeries("coolness",
+                                    ["time", "foo", "bar"],
+                                    [
+                                        ["2017-05-10T14:47:38.82524801Z", "red", "blue"],
+                                    ]);
+
+    series.rows[0].time.shouldEqual(SysTime(DateTime(2017, 05, 10, 14, 47, 38), 825248.usecs, UTC()));
+}
+
 
 version(unittest) {
     /**
     Example:
-       The two lines must be equivalent under InfluxDB's line protocol
+    The two lines must be equivalent under InfluxDB's line protocol
        Since the tags and fields aren't ordered, a straight comparison
        might yield false errors.
        The timestamp is also taken care of by comparing it to the current timestamp
