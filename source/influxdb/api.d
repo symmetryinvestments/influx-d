@@ -58,10 +58,11 @@ struct DatabaseImpl(alias manageFunc, alias queryFunc, alias writeFunc) {
        Insert data into the DB.
      */
     void insert(in Measurement[] measurements) const {
-        import std.algorithm: map;
-        import std.array: array, join;
-        import std.conv: to;
-        writeFunc(url, db, measurements.map!(to!string).array.join("\n"));
+        import std.format: format;
+        static if (__VERSION__ >= 2074)
+            writeFunc(url, db, format!"%(%s\n%)"(measurements));
+        else
+            writeFunc(url, db, format("%(%s\n%)", measurements));
     }
 
     /**
