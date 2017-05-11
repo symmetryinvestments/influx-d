@@ -429,12 +429,23 @@ struct MeasurementSeries {
     }
 
     void finalizeDeserialization(Asdf data) {
-        import std.algorithm: map;
-        import std.array: array;
-
-        auto dataValues = data["values"];
-        foreach(row; dataValues.byElement) {
-            values ~= row.byElement.map!(a => cast(string)a).array;
+        import std.algorithm: map, count;
+        import std.array: uninitializedArray;
+        auto rows = data["values"].byElement.map!"a.byElement";
+        // count is fast for Asdf
+        values = uninitializedArray!(string[][])(rows.count, columns.length);
+        foreach(value; values)
+        {
+            auto row = rows.front;
+            assert(row.count == columns.length);
+            foreach (ref e; value)
+            {
+                // do not allocates data here because of `const`, 
+                // reuses Asdf data
+                e = cast(string) cast(const(char)[]) row.front;
+                row.popFront;
+            }
+            rows.popFront;
         }
     }
 }
