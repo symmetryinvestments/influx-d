@@ -222,6 +222,12 @@ struct Measurement {
             dg.formatValue(timestamp, fmt);
         }
     }
+
+    deprecated("Use std.conv.to!string instead.")
+    string toString()() {
+        import std.conv: to;
+        return this.to!string;
+    }
 }
 
 private void aaFormat(Dg, T : K[V], K, V)(scope Dg dg, scope T aa)
@@ -402,6 +408,12 @@ struct MeasurementSeries {
                     dg(value);
                 }
                 dg(")");
+            }
+
+            deprecated("Use std.conv.to!string instead.")
+            string toString()() {
+                import std.conv: to;
+                return this.to!string;
             }
         }
 
