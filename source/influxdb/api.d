@@ -391,15 +391,16 @@ struct MeasurementSeries {
                 }
             }
 
-            string toString() @safe const pure nothrow {
-
-                import std.string: join;
-
-                string[] ret;
-                foreach(i, ref value; columnValues) {
-                    ret ~= columnNames[i] ~ ": " ~ value;
+            void toString(Dg)(scope Dg dg) const {
+                dg("Row(");
+                foreach(i, value; columnValues) {
+                    if (i)
+                        dg(", ");
+                    dg(columnNames[i]);
+                    dg(": ");
+                    dg(value);
                 }
-                return "Row(" ~ ret.join(", ") ~ ")";
+                dg(")");
             }
         }
 
@@ -480,6 +481,16 @@ struct MeasurementSeries {
                                     [["2015-06-11T20:46:02Z", "red", "blue"]]);
     series.rows[0].get("foo", "oops").shouldEqual("red");
     series.rows[0].get("quux", "oops").shouldEqual("oops");
+}
+
+///
+@("MeasurementSeries.Row.to!string")
+@safe pure unittest {
+    import std.conv: to;
+    auto series = MeasurementSeries("coolness",
+                                    ["time", "foo", "bar"],
+                                    [["2015-06-11T20:46:02Z", "red", "blue"]]);
+    series.rows[0].to!string.shouldEqual("Row(time: 2015-06-11T20:46:02Z, foo: red, bar: blue)");
 }
 
 ///
