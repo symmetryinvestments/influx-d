@@ -248,7 +248,6 @@ private void aaFormat(Dg, T : K[V], K, V)(scope Dg dg, scope T aa)
 ///
 @("Measurement.to!string no timestamp")
 @safe unittest {
-    import std.stdio;
     import std.conv: to;
     {
         auto m = Measurement("cpu",
