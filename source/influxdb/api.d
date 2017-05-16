@@ -58,9 +58,11 @@ struct DatabaseImpl(alias manageFunc, alias queryFunc, alias writeFunc) {
        Insert data into the DB.
      */
     void insert(in Measurement[] measurements) const {
-        import std.algorithm: map;
-        import std.array: array, join;
-        writeFunc(url, db, measurements.map!(a => a.toString).array.join("\n"));
+        import std.format: format;
+        static if (__VERSION__ >= 2074)
+            writeFunc(url, db, format!"%(%s\n%)"(measurements));
+        else
+            writeFunc(url, db, format("%(%s\n%)", measurements));
     }
 
     /**
@@ -203,85 +205,106 @@ struct Measurement {
         this.timestamp = (time.toUnixTime!long * 1_000_000_000 + time.fracSecs.total!"nsecs");
     }
 
-    string toString() @safe pure const {
-        import std.range: chain;
-        import std.conv: to;
-        import std.array: join;
-
-        // @trusted due to aa.keys
-        auto aaToString(in string[string] aa) @trusted {
-            import std.algorithm: map;
-            return aa.keys.map!(k => k ~ "=" ~ aa[k]);
+    void toString(Dg)(Dg dg) const {
+        dg(name);
+        if (tags.length)
+        {
+            dg(",");
+            dg.aaFormat(tags);
         }
+        dg(" ");
+        dg.aaFormat(fields);
+        if(timestamp != 0)
+        {
+            dg(" ");
+            import std.format: FormatSpec, formatValue;
+            FormatSpec!char fmt;
+            dg.formatValue(timestamp, fmt);
+        }
+    }
 
-        const nameTags = chain([name], aaToString(tags)).join(",");
-        const fields = aaToString(fields).join(",");
+    deprecated("Use std.conv.to!string instead.")
+    string toString()() {
+        import std.conv: to;
+        return this.to!string;
+    }
+}
 
-        auto parts = [nameTags.to!string, fields.to!string];
-        if(timestamp != 0) parts ~= timestamp.to!string;
-
-        return parts.join(" ");
+private void aaFormat(Dg, T : K[V], K, V)(scope Dg dg, scope T aa)
+{
+    import std.format: FormatSpec, formatValue;
+    size_t i;
+    FormatSpec!char fmt;
+    foreach(key, value; aa)
+    {
+        if (i++)
+            dg(",");
+        dg.formatValue(key, fmt);
+        dg("=");
+        dg.formatValue(value, fmt);
     }
 }
 
 ///
-@("Measurement.toString no timestamp")
+@("Measurement.to!string no timestamp")
 @safe unittest {
+    import std.conv: to;
     {
         auto m = Measurement("cpu",
                              ["tag1": "toto", "tag2": "foo"],
                              ["load": "42", "temperature": "53"]);
-        m.toString.shouldEqualLine("cpu,tag1=toto,tag2=foo load=42,temperature=53");
+        m.to!string.shouldEqualLine("cpu,tag1=toto,tag2=foo load=42,temperature=53");
     }
-
     {
         auto m = Measurement("thingie",
                              ["foo": "bar"],
                              ["value": "7"]);
-        m.toString.shouldEqualLine("thingie,foo=bar value=7");
+        m.to!string.shouldEqualLine("thingie,foo=bar value=7");
     }
 }
 
 ///
-@("Measurement.toString no timestamp no tags")
+@("Measurement.to!string no timestamp no tags")
 @safe unittest {
+    import std.conv: to;
     auto m = Measurement("cpu",
                          ["load": "42", "temperature": "53"]);
-    m.toString.shouldEqualLine("cpu load=42,temperature=53");
+    m.to!string.shouldEqualLine("cpu load=42,temperature=53");
 }
 
 ///
-@("Measurement.toString with timestamp")
+@("Measurement.to!string with timestamp")
 @safe unittest {
-
+    import std.conv: to;
     import std.datetime: SysTime;
 
     auto m = Measurement("cpu",
                          ["tag1": "toto", "tag2": "foo"],
                          ["load": "42", "temperature": "53"],
                          SysTime.fromUnixTime(7));
-    m.toString.shouldEqualLine("cpu,tag1=toto,tag2=foo load=42,temperature=53 7000000000");
+    m.to!string.shouldEqualLine("cpu,tag1=toto,tag2=foo load=42,temperature=53 7000000000");
 }
 
 ///
-@("Measurement.toString with timestamp no tags")
+@("Measurement.to!string with timestamp no tags")
 @safe unittest {
-
+    import std.conv: to;
     import std.datetime: SysTime;
 
     auto m = Measurement("cpu",
                          ["load": "42", "temperature": "53"],
                          SysTime.fromUnixTime(7));
-    m.toString.shouldEqualLine("cpu load=42,temperature=53 7000000000");
+    m.to!string.shouldEqualLine("cpu load=42,temperature=53 7000000000");
 }
 
 @("Measurement fraction of a second")
 @safe unittest {
+    import std.conv: to;
     import std.datetime: DateTime, SysTime, Duration, usecs, nsecs, UTC;
     auto m = Measurement("cpu",
                          ["load": "42", "temperature": "53"],
                          SysTime(DateTime(2017, 2, 1), 300.usecs + 700.nsecs, UTC()));
-    m.toString.shouldEqualLine("cpu load=42,temperature=53 1485907200000300700");
+    m.to!string.shouldEqualLine("cpu load=42,temperature=53 1485907200000300700");
 }
 
 /**
@@ -374,15 +397,22 @@ struct MeasurementSeries {
                 }
             }
 
-            string toString() @safe const pure nothrow {
-
-                import std.string: join;
-
-                string[] ret;
-                foreach(i, ref value; columnValues) {
-                    ret ~= columnNames[i] ~ ": " ~ value;
+            void toString(Dg)(scope Dg dg) const {
+                dg("Row(");
+                foreach(i, value; columnValues) {
+                    if (i)
+                        dg(", ");
+                    dg(columnNames[i]);
+                    dg(": ");
+                    dg(value);
                 }
-                return "Row(" ~ ret.join(", ") ~ ")";
+                dg(")");
+            }
+
+            deprecated("Use std.conv.to!string instead.")
+            string toString()() {
+                import std.conv: to;
+                return this.to!string;
             }
         }
 
@@ -410,12 +440,23 @@ struct MeasurementSeries {
     }
 
     void finalizeDeserialization(Asdf data) {
-        import std.algorithm: map;
-        import std.array: array;
-
-        auto dataValues = data["values"];
-        foreach(row; dataValues.byElement) {
-            values ~= row.byElement.map!(a => cast(string)a).array;
+        import std.algorithm: map, count;
+        import std.array: uninitializedArray;
+        auto rows = data["values"].byElement.map!"a.byElement";
+        // count is fast for Asdf
+        values = uninitializedArray!(string[][])(rows.count, columns.length);
+        foreach(value; values)
+        {
+            auto row = rows.front;
+            assert(row.count == columns.length);
+            foreach (ref e; value)
+            {
+                // do not allocates data here because of `const`, 
+                // reuses Asdf data
+                e = cast(string) cast(const(char)[]) row.front;
+                row.popFront;
+            }
+            rows.popFront;
         }
     }
 }
@@ -463,6 +504,16 @@ struct MeasurementSeries {
                                     [["2015-06-11T20:46:02Z", "red", "blue"]]);
     series.rows[0].get("foo", "oops").shouldEqual("red");
     series.rows[0].get("quux", "oops").shouldEqual("oops");
+}
+
+///
+@("MeasurementSeries.Row.to!string")
+@safe pure unittest {
+    import std.conv: to;
+    auto series = MeasurementSeries("coolness",
+                                    ["time", "foo", "bar"],
+                                    [["2015-06-11T20:46:02Z", "red", "blue"]]);
+    series.rows[0].to!string.shouldEqual("Row(time: 2015-06-11T20:46:02Z, foo: red, bar: blue)");
 }
 
 ///
