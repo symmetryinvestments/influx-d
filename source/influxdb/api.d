@@ -13,6 +13,53 @@ module influxdb.api;
 static import influxdb.vibe;
 version(unittest) import unit_threaded;
 
+/++
+Params:
+    time = Influx-db time string
+Returns:
+    SysTime
++/
+auto influxSysTime(string time) @safe
+{
+    import std.datetime: SysTime, DateTimeException;
+
+    try {
+        return SysTime.fromISOExtString(time);
+    } catch(DateTimeException ex) {
+        // see https://issues.dlang.org/show_bug.cgi?id=16053
+        import std.stdio: stderr;
+        import std.algorithm: countUntil;
+
+        debug stderr.writeln("Could not convert ", time, " due to a Phobos bug, reducing precision");
+
+        // find where the fractional part starts
+        auto dotIndex = time.countUntil(".");
+        if(dotIndex < 0)
+            dotIndex = time.countUntil(",");
+        if(dotIndex < 0)
+            throw ex;
+
+
+        const firstNonDigitIndex = time[dotIndex + 1 .. $].countUntil!(a => a < '0' || a > '9') + dotIndex + 1;
+        if(firstNonDigitIndex < 0) throw ex;
+
+        const lastDigitIndex = firstNonDigitIndex - 1;
+
+        foreach(i; 0 .. 4) {
+            // try to cut out a number from the fraction
+            // inaccurate but better than throwing an exception
+            const timeStr =
+                time[0 .. lastDigitIndex - i] ~
+                time[firstNonDigitIndex .. $];
+            try
+                return SysTime.fromISOExtString(timeStr);
+            catch(DateTimeException _) {}
+        }
+
+        throw ex;
+    }
+}
+
 ///
 alias Database = DatabaseImpl!(influxdb.vibe.manage, influxdb.vibe.query, influxdb.vibe.write);
 
@@ -334,6 +381,7 @@ struct MeasurementSeries {
     @serializationIgnoreIn string[][] values;
 
     static struct Rows {
+        import std.range: Transversal, TransverseOptions;
 
         const string[] columns;
         const(string[])[] rows;
@@ -357,44 +405,7 @@ struct MeasurementSeries {
             }
 
             SysTime time() @safe const {
-
-                import std.datetime: DateTimeException;
-
-                try {
-                    return SysTime.fromISOExtString(this["time"]);
-                } catch(DateTimeException ex) {
-                    // see https://issues.dlang.org/show_bug.cgi?id=16053
-                    import std.stdio: stderr;
-                    import std.algorithm: countUntil;
-
-                    debug stderr.writeln("Could not convert ", this["time"], " due to a Phobos bug, reducing precision");
-
-                    // find where the fractional part starts
-                    auto dotIndex = this["time"].countUntil(".");
-                    if(dotIndex < 0)
-                        dotIndex = this["time"].countUntil(",");
-                    if(dotIndex < 0)
-                        throw ex;
-
-
-                    const firstNonDigitIndex = this["time"][dotIndex + 1 .. $].countUntil!(a => a < '0' || a > '9') + dotIndex + 1;
-                    if(firstNonDigitIndex < 0) throw ex;
-
-                    const lastDigitIndex = firstNonDigitIndex - 1;
-
-                    foreach(i; 0 .. 4) {
-                        // try to cut out a number from the fraction
-                        // inaccurate but better than throwing an exception
-                        const timeStr =
-                            this["time"][0 .. lastDigitIndex - i] ~
-                            this["time"][firstNonDigitIndex .. $];
-                        try
-                            return SysTime.fromISOExtString(timeStr);
-                        catch(DateTimeException _) {}
-                    }
-
-                    throw ex;
-                }
+                return influxSysTime(this["time"]);
             }
 
             void toString(Dg)(scope Dg dg) const {
@@ -418,6 +429,23 @@ struct MeasurementSeries {
 
         Row opIndex(in size_t i) @safe pure const nothrow {
             return Row(columns, rows[i]);
+        }
+
+        /++
+        Params:
+            key = column name
+        Returns:
+            Column as range access range of strings.
+        Throws:
+            Exception, if key was not found.
+        +/
+        Transversal!(const(string[])[], TransverseOptions.assumeNotJagged)
+        opIndex(in string key) @safe pure const {
+            import std.algorithm: countUntil;
+            size_t idx = columns.countUntil(key);
+            if (idx >= columns.length)
+                throw new Exception("Unknown key " ~ key);
+            return typeof(return)(rows, idx);
         }
 
         size_t length() @safe pure const nothrow { return rows.length; }
@@ -483,6 +511,8 @@ struct MeasurementSeries {
     series.rows[1]["time"].shouldEqual("2013-02-09T12:34:56Z");
     series.rows[1].time.shouldEqual(SysTime(DateTime(2013, 2, 9, 12, 34, 56), UTC()));
 
+    series.rows["time"][0].shouldEqual("2015-06-11T20:46:02Z");
+    series.rows["bar"][1].shouldEqual("yellow");
 
     series.rows.array.shouldEqual(
         [
