@@ -91,3 +91,14 @@ unittest {
     }
 
 }
+
+@Serial
+@("string data")
+unittest {
+    import influxdb.api: Database, Measurement;
+
+    const database = Database(influxURL, "myspecialDB");
+    scope(exit) database.drop;
+
+    database.insert(Measurement("cpu", ["string": "foo"]));
+}
