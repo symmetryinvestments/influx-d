@@ -304,12 +304,21 @@ private void aaFormat(Dg, T : K[V], K, V)
 
 private bool valueIsString(in string value) @safe pure nothrow {
     import std.conv: to;
+    bool ret = true;
+
     try {
         value.to!double;
         return false;
     } catch(Exception _) {
-        return true;
     }
+
+    try {
+        value.to!bool;
+        return false;
+    } catch(Exception _) {
+    }
+
+    return true;
 }
 
 ///
@@ -384,6 +393,18 @@ private bool valueIsString(in string value) @safe pure nothrow {
                          SysTime.fromUnixTime(7));
     m.to!string.shouldEqualLine(`cpu foo="bar" 7000000000`);
 }
+
+@("Measurement.to!string with bool")
+@safe unittest {
+    import std.conv: to;
+    import std.datetime: SysTime;
+
+    auto m = Measurement("cpu",
+                         ["foo": "true"],
+                         SysTime.fromUnixTime(7));
+    m.to!string.shouldEqualLine(`cpu foo=true 7000000000`);
+}
+
 
 /**
    A query response
