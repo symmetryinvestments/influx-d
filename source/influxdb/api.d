@@ -10,8 +10,9 @@
 
 module influxdb.api;
 
-static import influxdb.vibe;
 version(unittest) import unit_threaded;
+static import influxdb.vibe;
+import std.typecons: Flag, No;
 
 /++
 Params:
@@ -253,6 +254,9 @@ struct Measurement {
     }
 
     void toString(Dg)(Dg dg) const {
+
+        import std.typecons: Yes;
+
         dg(name);
         if (tags.length)
         {
@@ -260,7 +264,7 @@ struct Measurement {
             dg.aaFormat(tags);
         }
         dg(" ");
-        dg.aaFormat(fields);
+        dg.aaFormat(fields, Yes.quoteStrings);
         if(timestamp != 0)
         {
             dg(" ");
@@ -277,7 +281,8 @@ struct Measurement {
     }
 }
 
-private void aaFormat(Dg, T : K[V], K, V)(scope Dg dg, scope T aa)
+private void aaFormat(Dg, T : K[V], K, V)
+                     (scope Dg dg, scope T aa, in Flag!"quoteStrings" quoteStrings = No.quoteStrings)
 {
     import std.format: FormatSpec, formatValue;
     size_t i;
@@ -288,8 +293,32 @@ private void aaFormat(Dg, T : K[V], K, V)(scope Dg dg, scope T aa)
             dg(",");
         dg.formatValue(key, fmt);
         dg("=");
-        dg.formatValue(value, fmt);
+        if(quoteStrings && valueIsString(value)) {
+            dg.formatValue(`"`, fmt);
+            dg.formatValue(value, fmt);
+            dg.formatValue(`"`, fmt);
+        } else
+            dg.formatValue(value, fmt);
     }
+}
+
+private bool valueIsString(in string value) @safe pure nothrow {
+    import std.conv: to;
+    bool ret = true;
+
+    try {
+        value.to!double;
+        return false;
+    } catch(Exception _) {
+    }
+
+    try {
+        value.to!bool;
+        return false;
+    } catch(Exception _) {
+    }
+
+    return true;
 }
 
 ///
@@ -353,6 +382,29 @@ private void aaFormat(Dg, T : K[V], K, V)(scope Dg dg, scope T aa)
                          SysTime(DateTime(2017, 2, 1), 300.usecs + 700.nsecs, UTC()));
     m.to!string.shouldEqualLine("cpu load=42,temperature=53 1485907200000300700");
 }
+
+@("Measurement.to!string with string")
+@safe unittest {
+    import std.conv: to;
+    import std.datetime: SysTime;
+
+    auto m = Measurement("cpu",
+                         ["foo": "bar"],
+                         SysTime.fromUnixTime(7));
+    m.to!string.shouldEqualLine(`cpu foo="bar" 7000000000`);
+}
+
+@("Measurement.to!string with bool")
+@safe unittest {
+    import std.conv: to;
+    import std.datetime: SysTime;
+
+    auto m = Measurement("cpu",
+                         ["foo": "true"],
+                         SysTime.fromUnixTime(7));
+    m.to!string.shouldEqualLine(`cpu foo=true 7000000000`);
+}
+
 
 /**
    A query response
@@ -479,7 +531,7 @@ struct MeasurementSeries {
             assert(row.count == columns.length);
             foreach (ref e; value)
             {
-                // do not allocates data here because of `const`, 
+                // do not allocates data here because of `const`,
                 // reuses Asdf data
                 e = cast(string) cast(const(char)[]) row.front;
                 row.popFront;

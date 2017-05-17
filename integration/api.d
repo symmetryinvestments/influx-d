@@ -91,3 +91,37 @@ unittest {
     }
 
 }
+
+@Serial
+@("string data")
+unittest {
+    import influxdb.api: Database, Measurement;
+
+    const database = Database(influxURL, "myspecialDB");
+    scope(exit) database.drop;
+
+    database.insert(Measurement("cpu", ["string": "foo"]));
+}
+
+@Serial
+@("float data")
+unittest {
+    import influxdb.api: Database, Measurement;
+
+    const database = Database(influxURL, "myspecialDB");
+    scope(exit) database.drop;
+
+    database.insert(Measurement("cpu", ["value": "42.3"]));
+}
+
+@Serial
+@("bool data")
+unittest {
+    import influxdb.api: Database, Measurement;
+
+    const database = Database(influxURL, "myspecialDB");
+    scope(exit) database.drop;
+
+    database.insert(Measurement("cpu", ["value": "true"]));
+    database.insert(Measurement("cpu", ["value": "false"]));
+}
