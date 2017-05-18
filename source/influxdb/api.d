@@ -108,6 +108,9 @@ struct DatabaseImpl(alias manageFunc, alias queryFunc, alias writeFunc) {
      */
     void insert(in Measurement[] measurements) const {
         import std.format: format;
+
+        if(measurements.length == 0) return;
+
         static if (__VERSION__ >= 2074)
             writeFunc(url, db, format!"%(%s\n%)"(measurements));
         else
@@ -216,6 +219,25 @@ struct DatabaseImpl(alias manageFunc, alias queryFunc, alias writeFunc) {
         );
     }();
 }
+
+
+@("insert with no measurements does nothing")
+@safe unittest {
+
+    string[] lines;
+
+    alias TestDatabase = DatabaseImpl!(
+        (url, cmd) { }, // manage
+        (url, db, query) => `{}`, // query
+        (url, db, line) => lines ~= line // write
+    );
+
+    const database = TestDatabase("http://db.com", "testdb");
+    Measurement[] measurements;
+    database.insert(measurements);
+    lines.shouldBeEmpty;
+}
+
 
 /**
    An InfluxDB measurement
