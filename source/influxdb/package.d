@@ -14,3 +14,6 @@
 module influxdb;
 
 public import influxdb.api;
+
+version(Have_mir_algorithm)
+	public import influxdb.mir;
