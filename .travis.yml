@@ -17,6 +17,7 @@ before_script:
 script:
   - dub test
   - dub run --build=unittest -c integration
+  - dub run --root mir-integration
 
 matrix:
     include:

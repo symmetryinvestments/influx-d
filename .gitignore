@@ -8,3 +8,6 @@ bin
 *.lib
 *.dll
 *.a
+mir-integration/mir-integration
+mir-integration/dub.selections.json
+*.sublime-project
