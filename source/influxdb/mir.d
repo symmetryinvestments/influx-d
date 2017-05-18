@@ -15,12 +15,8 @@ module influxdb.mir;
 version(Have_mir_algorithm):
 
 static if (__VERSION__ >= 2073)
-    version = Have_influxdb_mir;
-else
-    pragma(msg, "Warning: influxdb.mir requires DMD Front End >= 2073");
-
-version(Have_influxdb_mir):
-
+{
+////////////////////////////////////
 import mir.timeseries;
 import influxdb.api;
 import std.datetime: DateTime;
@@ -111,3 +107,7 @@ unittest
         [3.0, 4.0],
         [1.0, 2.0]]);
 }
+////////////////////////////////////
+}
+else
+    pragma(msg, "Warning: influxdb.mir requires DMD Front End >= 2073");
