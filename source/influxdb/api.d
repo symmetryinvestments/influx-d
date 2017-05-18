@@ -13,6 +13,7 @@ module influxdb.api;
 version(unittest) import unit_threaded;
 static import influxdb.vibe;
 import std.typecons: Flag, No;
+import std.datetime: DateTime, SysTime;
 
 /++
 Params:
@@ -614,6 +615,37 @@ struct MeasurementSeries {
     series.rows[0].time.shouldEqual(SysTime(DateTime(2017, 05, 10, 14, 47, 38), 825248.usecs, UTC()));
 }
 
+
+/**
+   Converts a DateTime to a string suitable for use in queries
+   e.g. SELECT * FROM foo WHERE time >=
+ */
+string toInfluxDateTime(in DateTime time) @safe {
+    import std.datetime: UTC;
+    return toInfluxDateTime(SysTime(time, UTC()));
+}
+
+///
+@("toInfluxDateTime with DateTime")
+unittest {
+    DateTime(2017, 2, 1).toInfluxDateTime.shouldEqual("'2017-02-01T00:00:00Z'");
+}
+
+/**
+   Converts a SysTime to a string suitable for use in queries
+   e.g. SELECT * FROM foo WHERE time >=
+ */
+
+string toInfluxDateTime(in SysTime time) @safe {
+    return "'" ~ time.toISOExtString ~ "'";
+}
+
+///
+@("toInfluxDateTime with SysTime")
+unittest {
+    import std.datetime: UTC;
+    SysTime(DateTime(2017, 2, 1), UTC()).toInfluxDateTime.shouldEqual("'2017-02-01T00:00:00Z'");
+}
 
 version(unittest) {
     /**
