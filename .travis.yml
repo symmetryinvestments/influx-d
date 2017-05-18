@@ -4,7 +4,8 @@ sudo: true
 
 matrix:
   include:
-      {d: dmd , script: dub run --root mir-integration}
+      {d: dmd , script: dub run --root mir-integration && dub run --build=unittest -c integration-mir}
+      {d: ldc , script: dub run --root mir-integration && dub run --build=unittest -c integration-mir}
 
 
 before_install:

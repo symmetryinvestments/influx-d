@@ -61,10 +61,22 @@
             "sourcePaths": ["source", "integration"],
             "dependencies": {
                 "unit-threaded": "~>0.7.0",
+            }
+
+        },
+
+        {
+            "name": "integration-mir",
+            "targetType": "executable",
+            "targetName": "bin/it",
+            "sourcePaths": ["source", "integration"],
+            "dependencies": {
+                "unit-threaded": "~>0.7.0",
                 "mir-algorithm": "~>0.6.0"
             }
 
         },
+
         {
             "name": "integration-ssl-1.1",
             "targetType": "executable",
