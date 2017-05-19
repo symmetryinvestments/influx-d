@@ -491,9 +491,14 @@ struct InfluxValue {
 
     string value;
 
-    this(int i) @safe pure {
+    this(int v) @safe pure {
         import std.conv: to;
-        value = i.to!string ~ "i";
+        value = v.to!string ~ "i";
+    }
+
+    this(float v) @safe {
+        import std.conv: to;
+        value = v.to!string;
     }
 
     string toString() @safe pure nothrow @nogc {
@@ -510,6 +515,22 @@ struct InfluxValue {
                           ["foo": InfluxValue(16)],
                           SysTime.fromUnixTime(7));
     m.to!string.shouldEqualLine(`cpu foo=16i 7000000000`);
+}
+
+@("Measurement.to!string InfluxValue float")
+@safe unittest {
+    import std.conv: to;
+    import std.datetime: SysTime;
+
+    Measurement("cpu",
+                ["foo": InfluxValue(16.0)],
+                SysTime.fromUnixTime(7))
+        .to!string.shouldEqualLine(`cpu foo=16 7000000000`);
+
+    Measurement("cpu",
+                ["foo": InfluxValue(16.1)],
+                SysTime.fromUnixTime(7))
+        .to!string.shouldEqualLine(`cpu foo=16.1 7000000000`);
 }
 
 
