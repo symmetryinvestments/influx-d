@@ -491,22 +491,12 @@ struct InfluxValue {
 
     string value;
 
-    this(int v) @safe pure {
+    this(T)(T v) if(is(T == long) || is(T == int)) {
         import std.conv: to;
         value = v.to!string ~ "i";
     }
 
-    this(float v) @safe {
-        import std.conv: to;
-        value = v.to!string;
-    }
-
-    this(bool v) @safe pure {
-        import std.conv: to;
-        value = v.to!string;
-    }
-
-    this(string v) @safe pure {
+    this(T)(T v) if(is(T == string) || is(T == double) || is(T == bool)) {
         import std.conv: to;
         value = v.to!string;
     }
