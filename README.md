@@ -20,14 +20,19 @@ import influxdb;
 const database = Database("http://localhost:8086" /*URL*/, "mydb" /*DB name*/);
 
 // no explicit timestamp
-database.insert(Measurement("cpu" /*name*/, ["tag1": "foo"] /*tags*/, ["temperature": 42] /*values*/));
+database.insert(Measurement("cpu" /*name*/,
+                            ["tag1": "foo"] /*tags*/,
+                            ["temperature": InfluxValue(42)] /*values*/));
 // `insert` can also take `Measurement[]` or a variadic number of `Measurement`s
 // Measurement also has a contructor that does't take tags:
-// auto m = Measurement("cpu", ["temperature": 42]);
+// auto m = Measurement("cpu", ["temperature": InfluxValue(42)]);
 
 // explicit timestamp
 import std.datetime: Clock;
-database.insert(Measurement("cpu", ["tag1": "foo"], ["temperature": 68], Clock.currTime));
+database.insert(Measurement("cpu",
+                            ["tag1": "foo"],
+                            ["temperature": InfluxValue(68)],
+                            Clock.currTime));
 
 // this will have the two measurements given the code above
 const response = database.query("SELECT * FROM cpu");
