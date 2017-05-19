@@ -258,7 +258,8 @@ struct Measurement {
     this(string name,
          string[string] fields,
          SysTime time = SysTime.fromUnixTime(0))
-    @safe nothrow {
+    @safe nothrow
+    {
         string[string] tags;
         this(name, tags, fields, time);
     }
@@ -278,6 +279,33 @@ struct Measurement {
         // stdTime is in hnsecs
         //this.timestamp = time.stdTime / 100;
         this.timestamp = (time.toUnixTime!long * 1_000_000_000 + time.fracSecs.total!"nsecs");
+    }
+
+    this(string name,
+         InfluxValue[string] fields,
+         SysTime time = SysTime.fromUnixTime(0))
+    @safe {
+        string[string] tags;
+        this(name, tags, fields, time);
+    }
+
+    this(string name,
+         string[string] tags,
+         InfluxValue[string] fields,
+         SysTime time = SysTime.fromUnixTime(0))
+    @safe {
+
+        import std.conv: to;
+
+        string[string] stringFields;
+
+        () @trusted {
+            foreach(element; fields.byKeyValue) {
+                stringFields[element.key] = element.value.to!string;
+            }
+        }();
+
+        this(name, tags, stringFields, time);
     }
 
     void toString(Dg)(Dg dg) const {
@@ -456,6 +484,31 @@ private bool valueIsString(in string value) @safe pure nothrow {
     auto m = Measurement("cpu",
                          ["foo": "16i"],
                          SysTime.fromUnixTime(7));
+    m.to!string.shouldEqualLine(`cpu foo=16i 7000000000`);
+}
+
+struct InfluxValue {
+
+    string value;
+
+    this(int i) @safe pure {
+        import std.conv: to;
+        value = i.to!string ~ "i";
+    }
+
+    string toString() @safe pure nothrow @nogc {
+        return value;
+    }
+}
+
+@("Measurement.to!string InfluxValue int")
+@safe unittest {
+    import std.conv: to;
+    import std.datetime: SysTime;
+
+    const m = Measurement("cpu",
+                          ["foo": InfluxValue(16)],
+                          SysTime.fromUnixTime(7));
     m.to!string.shouldEqualLine(`cpu foo=16i 7000000000`);
 }
 
