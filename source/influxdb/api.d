@@ -10,7 +10,11 @@
 
 module influxdb.api;
 
-version(unittest) import unit_threaded;
+version(unittest)
+    import unit_threaded;
+else
+    struct Values { this(string[]...) { } }
+
 static import influxdb.vibe;
 import std.typecons: Flag, No;
 import std.datetime: DateTime, SysTime;
@@ -325,8 +329,11 @@ private void aaFormat(Dg, T : K[V], K, V)
     }
 }
 
+
 private bool valueIsString(in string value) @safe pure nothrow {
     import std.conv: to;
+    import std.algorithm: canFind;
+
     bool ret = true;
 
     try {
@@ -340,6 +347,9 @@ private bool valueIsString(in string value) @safe pure nothrow {
         return false;
     } catch(Exception _) {
     }
+
+    if(["t", "T", "f", "F"].canFind(value))
+        return false;
 
     return true;
 }
@@ -418,14 +428,16 @@ private bool valueIsString(in string value) @safe pure nothrow {
 }
 
 @("Measurement.to!string with bool")
+@Values("t", "T", "true", "True", "TRUE", "f", "F", "false", "False", "FALSE")
 @safe unittest {
     import std.conv: to;
     import std.datetime: SysTime;
 
+    const value = getValue!string;
     auto m = Measurement("cpu",
-                         ["foo": "true"],
+                         ["foo": value],
                          SysTime.fromUnixTime(7));
-    m.to!string.shouldEqualLine(`cpu foo=true 7000000000`);
+    m.to!string.shouldEqualLine(`cpu foo=` ~ value ~ ` 7000000000`);
 }
 
 
