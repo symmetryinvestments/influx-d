@@ -21,7 +21,7 @@ Params:
 Returns:
     SysTime
 +/
-auto influxSysTime(string time) @safe
+SysTime influxSysTime(string time) @safe
 {
     import std.datetime: SysTime, DateTimeException;
 
