@@ -351,6 +351,14 @@ private bool valueIsString(in string value) @safe pure nothrow {
     if(["t", "T", "f", "F"].canFind(value))
         return false;
 
+    if(value.length > 0 && value[$ - 1] == 'i') {
+        try {
+            value[0 .. $ - 1].to!int;
+            return false;
+        } catch(Exception _) {
+        }
+    }
+
     return true;
 }
 
@@ -438,6 +446,17 @@ private bool valueIsString(in string value) @safe pure nothrow {
                          ["foo": value],
                          SysTime.fromUnixTime(7));
     m.to!string.shouldEqualLine(`cpu foo=` ~ value ~ ` 7000000000`);
+}
+
+@("Measurement.to!string with int")
+@safe unittest {
+    import std.conv: to;
+    import std.datetime: SysTime;
+
+    auto m = Measurement("cpu",
+                         ["foo": "16i"],
+                         SysTime.fromUnixTime(7));
+    m.to!string.shouldEqualLine(`cpu foo=16i 7000000000`);
 }
 
 
