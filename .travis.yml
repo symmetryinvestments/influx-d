@@ -2,11 +2,6 @@ language: d
 dist: trusty
 sudo: true
 
-matrix:
-  include:
-      {d: dmd , script: dub run --root mir-integration && dub run --build=unittest -c integration-mir}
-      {d: ldc , script: dub run --root mir-integration && dub run --build=unittest -c integration-mir}
-
 
 before_install:
   - curl -sL https://repos.influxdata.com/influxdb.key | sudo apt-key add -
@@ -23,12 +18,14 @@ before_script:
 script:
   - dub test
   - dub run --build=unittest -c integration
+  - dub build
 
 matrix:
     include:
-        - d: dmd
-        - d: dmd-2.073.2
-        - d: dmd-2.072.2
-        - d: dmd-2.071.2
-        - d: dmd-2.070.2
-        - d: ldc
+      - d: dmd
+        script: dub run --root mir-integration && dub run --build=unittest -c integration-mir
+      - d: dmd-2.073.2
+      - d: dmd-2.072.2
+      - d: dmd-2.071.2
+      - d: dmd-2.070.2
+      - d: ldc
