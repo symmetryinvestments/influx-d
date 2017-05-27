@@ -308,7 +308,7 @@ struct Measurement {
         this(name, tags, stringFields, time);
     }
 
-    void toString(Dg)(Dg dg) const {
+    void toString(Dg)(scope Dg dg) const {
 
         import std.format: FormatSpec, formatValue;
         import std.typecons: Yes;
@@ -316,21 +316,31 @@ struct Measurement {
         FormatSpec!char fmt;
         dg.escape(`, `).formatValue(name, fmt);
         if (tags.length) {
-            dg(",");
+            dg.formatValue(',', fmt);
             dg.aaFormat(tags);
         }
-        dg(" ");
+        dg.formatValue(' ', fmt);
         dg.aaFormat(fields, Yes.quoteStrings);
         if(timestamp != 0) {
-            dg(" ");
+            dg.formatValue(' ', fmt);
             dg.formatValue(timestamp, fmt);
         }
     }
 
-    deprecated("Use std.conv.to!string instead.")
-    string toString()() {
-        import std.conv: to;
-        return this.to!string;
+    static if (__VERSION__ < 2072) {
+        string toString() @safe const {
+            import std.array : appender;
+            auto res = appender!string;
+            toString(res);
+            return res.data;
+        }
+    }
+    else {
+        deprecated("Use std.conv.to!string instead.")
+        string toString()() const {
+            import std.conv: to;
+            return this.to!string;
+        }
     }
 }
 
@@ -343,13 +353,13 @@ private void aaFormat(Dg, T : K[V], K, V)
     foreach(key, value; aa)
     {
         if (i++)
-            dg(",");
+            dg.formatValue(',', fmt);
         dg.escape(`,= `).formatValue(key, fmt);
-        dg("=");
+        dg.formatValue('=', fmt);
         if(quoteStrings && valueIsString(value)) {
-            dg.formatValue(`"`, fmt);
+            dg.formatValue('"', fmt);
             dg.escape('"').formatValue(value, fmt);
-            dg.formatValue(`"`, fmt);
+            dg.formatValue('"', fmt);
         } else
             dg.escape(`, `).formatValue(value, fmt);
     }
@@ -367,6 +377,17 @@ private auto escape(Dg)(scope Dg dg, in char[] chars...) {
                 if (chars.canFind(c))
                     dg.formatValue('\\', fmt);
                 dg.formatValue(c, fmt);
+            }
+        }
+
+        static if (__VERSION__ < 2072) {
+            void putChar(char c) {
+                import std.algorithm : canFind;
+                import std.format : formattedWrite;
+
+                if (chars.canFind(c))
+                    dg.formattedWrite("%s", '\\');
+                dg.formattedWrite("%s", c);
             }
         }
     }
