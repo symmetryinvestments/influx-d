@@ -308,31 +308,39 @@ struct Measurement {
         this(name, tags, stringFields, time);
     }
 
-    void toString(Dg)(Dg dg) const {
+    void toString(Dg)(scope Dg dg) const {
 
+        import std.format: FormatSpec, formatValue;
         import std.typecons: Yes;
 
-        dg(name);
-        if (tags.length)
-        {
-            dg(",");
+        FormatSpec!char fmt;
+        dg.escape(`, `).formatValue(name, fmt);
+        if (tags.length) {
+            dg.formatValue(',', fmt);
             dg.aaFormat(tags);
         }
-        dg(" ");
+        dg.formatValue(' ', fmt);
         dg.aaFormat(fields, Yes.quoteStrings);
-        if(timestamp != 0)
-        {
-            dg(" ");
-            import std.format: FormatSpec, formatValue;
-            FormatSpec!char fmt;
+        if(timestamp != 0) {
+            dg.formatValue(' ', fmt);
             dg.formatValue(timestamp, fmt);
         }
     }
 
-    deprecated("Use std.conv.to!string instead.")
-    string toString()() {
-        import std.conv: to;
-        return this.to!string;
+    static if (__VERSION__ < 2072) {
+        string toString() @safe const {
+            import std.array : appender;
+            auto res = appender!string;
+            toString(res);
+            return res.data;
+        }
+    }
+    else {
+        deprecated("Use std.conv.to!string instead.")
+        string toString()() const {
+            import std.conv: to;
+            return this.to!string;
+        }
     }
 }
 
@@ -345,18 +353,47 @@ private void aaFormat(Dg, T : K[V], K, V)
     foreach(key, value; aa)
     {
         if (i++)
-            dg(",");
-        dg.formatValue(key, fmt);
-        dg("=");
+            dg.formatValue(',', fmt);
+        dg.escape(`,= `).formatValue(key, fmt);
+        dg.formatValue('=', fmt);
         if(quoteStrings && valueIsString(value)) {
-            dg.formatValue(`"`, fmt);
-            dg.formatValue(value, fmt);
-            dg.formatValue(`"`, fmt);
+            dg.formatValue('"', fmt);
+            dg.escape('"').formatValue(value, fmt);
+            dg.formatValue('"', fmt);
         } else
-            dg.formatValue(value, fmt);
+            dg.escape(`, `).formatValue(value, fmt);
     }
 }
 
+private auto escape(Dg)(scope Dg dg, in char[] chars...) {
+
+    struct Escaper(Dg) {
+        void put(T)(T val) {
+            import std.algorithm : canFind;
+            import std.format: FormatSpec, formatValue;
+
+            FormatSpec!char fmt;
+            foreach (c; val) {
+                if (chars.canFind(c))
+                    dg.formatValue('\\', fmt);
+                dg.formatValue(c, fmt);
+            }
+        }
+
+        static if (__VERSION__ < 2072) {
+            void putChar(char c) {
+                import std.algorithm : canFind;
+                import std.format : formattedWrite;
+
+                if (chars.canFind(c))
+                    dg.formattedWrite("%s", '\\');
+                dg.formattedWrite("%s", c);
+            }
+        }
+    }
+
+    return Escaper!Dg();
+}
 
 private bool valueIsString(in string value) @safe pure nothrow @nogc {
     import std.algorithm: all, canFind;
@@ -532,6 +569,16 @@ private bool valueIsFloat(in string value) @safe pure nothrow @nogc {
                          ["foo": "16i", "bar": "-1i", "str": "-i"],
                          SysTime.fromUnixTime(7));
     m.to!string.shouldEqualLine(`cpu foo=16i,bar=-1i,str="-i" 7000000000`);
+}
+
+@("Measurement.to!string with special characters")
+@safe unittest {
+    import std.conv: to;
+
+    auto m = Measurement(`cpu "load", test`,
+                         ["tag 1": `to"to`, "tag,2": "foo"],
+                         ["foo,= ": "a,b", "b,a=r": `a " b`]);
+    m.to!string.shouldEqualLine(`cpu\ "load"\,\ test,tag\ 1=to"to,tag\,2=foo foo\,\=\ ="a,b",b\,a\=r="a \" b"`);
 }
 
 struct InfluxValue {
@@ -860,12 +907,27 @@ version(unittest) {
         // reassemble the protocol line with sorted tags and fields
         string sortLine(in string line) {
 
-            import std.string: split, join;
-            import std.range: chain;
-            import std.algorithm: sort;
+            import std.algorithm: sort, splitter;
+            import std.array : array;
             import std.conv: text;
+            import std.range: chain;
+            import std.string: join, split;
 
-            auto parts = line.split(" ");
+            bool isval;
+            size_t idx;
+            auto parts = line.splitter!((a) {
+                if (a == ' ' && !isval && (idx == 0 || line[idx-1] != '\\')) {
+                    idx++;
+                    return true;
+                }
+                if (a == '"' && idx > 0 && line[idx-1] != '\\' && line[idx-1] == '=')
+                    isval = true;
+                else if (a == '"' && idx > 0 && isval && line[idx-1] != '\\')
+                    isval = false;
+                idx++;
+                return false;
+            }).array;
+
             assert(parts.length == 3 || parts.length == 2,
                    text("Illegal number of parts( ", parts.length, ") in ", line));
 
