@@ -358,36 +358,83 @@ private void aaFormat(Dg, T : K[V], K, V)
 }
 
 
-private bool valueIsString(in string value) @safe pure nothrow {
-    import std.conv: to;
-    import std.algorithm: canFind;
+private bool valueIsString(in string value) @safe pure nothrow @nogc {
+    import std.algorithm: all, canFind;
+    import std.string : representation;
 
-    bool ret = true;
+    static immutable boolValues = ["t", "T", "true", "True", "TRUE", "f", "F", "false", "False", "FALSE"];
 
-    try {
-        value.to!double;
-        return false;
-    } catch(Exception _) {
-    }
+    // test for bool values
+    if(boolValues.canFind(value)) return false;
 
-    try {
-        value.to!bool;
-        return false;
-    } catch(Exception _) {
-    }
-
-    if(["t", "T", "f", "F"].canFind(value))
-        return false;
-
+    // test for int values
     if(value.length > 0 && value[$ - 1] == 'i') {
-        try {
-            value[0 .. $ - 1].to!int;
-            return false;
-        } catch(Exception _) {
-        }
+        auto tmp = value[0..$-1];
+        if (tmp[0] == '-' && tmp.length > 1) tmp = tmp[1..$];
+        if (tmp.representation.all!(a => a >= '0' && a <= '9')) return false;
     }
+
+    // test for float values
+    if (valueIsFloat(value)) return false;
 
     return true;
+}
+
+private bool valueIsFloat(in string value) @safe pure nothrow @nogc {
+
+    if (!value.length) return false;
+
+    int dotidx = -1;
+    int eidx = -1;
+    foreach(i, c; value) {
+        if (c == '+' || c == '-') {
+            if (i != 0 && (eidx < 0 || (eidx >= 0 && i-1 != eidx))) return false;
+        }
+        else if (c == '.') {
+            if (dotidx >= 0 || eidx > 0) return false;
+            dotidx = cast(int)i;
+        }
+        else if (c == 'e' || c == 'E') {
+            if (i == 0 || eidx > 0 || i+1 == value.length) return false;
+            eidx = cast(int)i;
+        }
+        else if (c < '0' || c > '9') return false;
+    }
+    return true;
+}
+
+///
+@("valueIsFloat")
+@safe unittest {
+    // valid
+    "123".valueIsFloat.shouldBeTrue;
+    "-123".valueIsFloat.shouldBeTrue;
+    "1e1".valueIsFloat.shouldBeTrue;
+    "+1.e1".valueIsFloat.shouldBeTrue;
+    ".1e1".valueIsFloat.shouldBeTrue;
+    "1e+1".valueIsFloat.shouldBeTrue;
+    "1.E-1".valueIsFloat.shouldBeTrue;
+    "1.2".valueIsFloat.shouldBeTrue;
+    "-1.3e+10".valueIsFloat.shouldBeTrue;
+    "+1.".valueIsFloat.shouldBeTrue;
+
+    // invalid
+    "1a".valueIsFloat.shouldBeFalse;
+    "1e.1".valueIsFloat.shouldBeFalse;
+    "e1".valueIsFloat.shouldBeFalse;
+    "".valueIsFloat.shouldBeFalse;
+    "1eE1".valueIsFloat.shouldBeFalse;
+    "1..0".valueIsFloat.shouldBeFalse;
+    "1.e.1".valueIsFloat.shouldBeFalse;
+    "1e12.3".valueIsFloat.shouldBeFalse;
+    "1e1+1".valueIsFloat.shouldBeFalse;
+    "ee".valueIsFloat.shouldBeFalse;
+    "1ee1".valueIsFloat.shouldBeFalse;
+    "++1".valueIsFloat.shouldBeFalse;
+    "1+1".valueIsFloat.shouldBeFalse;
+    "1.1.1".valueIsFloat.shouldBeFalse;
+    "1+".valueIsFloat.shouldBeFalse;
+    "1ě+1".valueIsFloat.shouldBeFalse;
 }
 
 ///
@@ -482,9 +529,9 @@ private bool valueIsString(in string value) @safe pure nothrow {
     import std.datetime: SysTime;
 
     auto m = Measurement("cpu",
-                         ["foo": "16i"],
+                         ["foo": "16i", "bar": "-1i", "str": "-i"],
                          SysTime.fromUnixTime(7));
-    m.to!string.shouldEqualLine(`cpu foo=16i 7000000000`);
+    m.to!string.shouldEqualLine(`cpu foo=16i,bar=-1i,str="-i" 7000000000`);
 }
 
 struct InfluxValue {
