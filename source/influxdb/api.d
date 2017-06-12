@@ -17,7 +17,7 @@ else
 
 static import influxdb.vibe;
 import std.typecons: Flag, No;
-import std.datetime: DateTime, SysTime;
+import std.datetime: Date, DateTime, SysTime, UTC;
 
 /++
 Params:
@@ -78,6 +78,12 @@ struct DatabaseImpl(alias manageFunc, alias queryFunc, alias writeFunc) {
 
     import influxdb.api;
 
+    version(Have_mir_algorithm)
+    {
+        import mir.timeseries: Series;
+        import mir.ndslice.slice: DeepElementType, Slice, SliceKind;
+    }
+
     string url; // e.g. http://localhost:8086
     string db;  // e.g. mydb
 
@@ -129,6 +135,147 @@ struct DatabaseImpl(alias manageFunc, alias queryFunc, alias writeFunc) {
     }
 
     /**
+        Insert Mir times-series with single column into the DB.
+        Supported time types are `SysTime`, `DateTime`, `Date`, and `long`.
+
+        See also the example in the `mir-integration` folder.
+
+        Params:
+            measurementName = measurement name
+            columnName = column name
+            series1 = 1D time-series
+            commonTags = list of tags to add to each measurement (optional)
+    */
+    version(Have_mir_algorithm)
+    void insert(TimeIterator, SliceKind kind, Iterator)(
+        string measurementName,
+        string columnName,
+        Series!(TimeIterator, kind, [1], Iterator) series1,
+        string[string] commonTags = null,
+    ) const
+    {
+        import mir.timeseries: series;
+        import mir.ndslice.topology: repeat, unpack, universal;
+        import mir.ndslice.dynamic: transposed;
+
+        return this.insert(
+            measurementName,
+            [columnName],
+            series1.time.series(series1.data.repeat(1).unpack.universal.transposed),
+            commonTags,
+        );
+    }
+
+    /**
+        Insert Mir times-series with multiple columns into the DB.
+        Supported time types are `SysTime`, `DateTime`, `Date`, and `long`.
+
+        See also the example in the `mir-integration` folder.
+
+        Params:
+            measurementName = measurement name
+            columnNames = array of column names
+            series = 2D time-series
+            commonTags = list of tags to add to each measurement (optional)
+    */
+    version(Have_mir_algorithm)
+    void insert(TimeIterator, SliceKind kind, Iterator)(
+        string measurementName,
+        in string[] columnNames,
+        Series!(TimeIterator, kind, [2], Iterator) series,
+        string[string] commonTags = null,
+    ) const
+    {
+        alias Time = typeof(series.front.time);
+        alias Data = DeepElementType!(typeof(series.front.data));
+
+        import std.traits: isSomeString;
+        import std.exception: assumeUnique, enforce;
+        import std.array: appender;
+        import std.format: FormatSpec, formatValue;
+
+        enforce(measurementName.length);
+        enforce(columnNames.length == series.length!1, "columnNames.length should be equal to series.length!1");
+
+        if (series.length == 0)
+        {
+            return;
+        }
+        
+        FormatSpec!char fmt;
+        auto app = appender!(const(char)[]);
+
+        // name output
+        app.put(measurementName);
+        // tags output
+        if (commonTags.length)
+        {
+            app.put(",");
+            aaFormat(&app.put!(const(char)[]), commonTags);
+        }
+        app.put(" ");
+        // name + tags
+        auto head = app.data;
+        app = appender!(const(char)[]);
+        foreach (i; 0 .. series.length)
+        {
+            auto observation = series[i];
+            if (i)
+            {
+                app.put("\n");
+            }
+    
+            app.put(head);
+
+            // values output
+            foreach(j, key; columnNames)
+            {
+                auto value = observation.data[j];
+                if (j)
+                    app.put(",");
+                app.formatValue(key, fmt);
+                app.put("=");
+                static if(isSomeString!Data)
+                {
+                    app.put(`"`);
+                    app.formatValue(value, fmt);
+                    app.put(`"`);
+                }
+                else
+                {
+                    app.formatValue(value, fmt);
+                }
+            }
+
+            // time output
+            static if (is(Time : long))
+            {
+                long timestamp = observation.time;
+            }
+            else
+            static if (is(Time : SysTime))
+            {
+                long timestamp = observation.time.toUnixTime!long * 1_000_000_000 + observation.time.fracSecs.total!"nsecs";
+            }
+            else
+            static if (is(Time : DateTime) || is(Time : Date))
+            {
+                long timestamp = SysTime(observation.time, UTC()).toUnixTime!long * 1_000_000_000;
+            }
+            else
+            {
+                static assert(0, "Unsupported timestamp type: " ~ Time.stringof);
+            }
+            if (timestamp != 0)
+            {
+                app.put(" ");
+                app.formatValue(timestamp, fmt);
+            }
+        }
+        writeFunc(url, db, app.data.assumeUnique);
+    }
+
+    /**
       Delete this DB
      */
     void drop() const {
@@ -173,7 +320,7 @@ struct DatabaseImpl(alias manageFunc, alias queryFunc, alias writeFunc) {
     writes.shouldBeEmpty;
     database.insert(Measurement("cpu", ["tag1": "foo"], ["temperature": "42"]));
     writes.shouldEqual([["url": "http://db.com", "db": "testdb",
-                         "line": "cpu,tag1=foo temperature=42"]]);
+                        "line": "cpu,tag1=foo temperature=42"]]);
 
     queries.shouldBeEmpty;
     const response = database.query("SELECT * from foo");
