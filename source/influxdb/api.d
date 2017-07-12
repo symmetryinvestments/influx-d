@@ -36,7 +36,10 @@ SysTime influxSysTime(string time) @safe
         import std.stdio: stderr;
         import std.algorithm: countUntil;
 
-        debug stderr.writeln("Could not convert ", time, " due to a Phobos bug, reducing precision");
+        debug {
+            (() @trusted => stderr)()
+                .writeln("Could not convert ", time, " due to a Phobos bug, reducing precision");
+        }
 
         // find where the fractional part starts
         auto dotIndex = time.countUntil(".");
