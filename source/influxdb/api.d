@@ -853,10 +853,10 @@ struct InfluxValue {
 @safe unittest {
     import std.conv: to;
     import std.datetime: SysTime;
-    import std.typecons : nullable;
+    import std.typecons : Nullable;
 
     Measurement("cpu",
-                ["foo": InfluxValue("true", InfluxValue.Type.bool_.nullable)],
+                ["foo": InfluxValue("true", Nullable!(InfluxValue.Type)(InfluxValue.Type.bool_))],
                 SysTime.fromUnixTime(7))
         .to!string.shouldEqualLine(`cpu foo=true 7000000000`);
 }
@@ -865,10 +865,10 @@ struct InfluxValue {
 @safe unittest {
     import std.conv: to;
     import std.datetime: SysTime;
-    import std.typecons : nullable;
+    import std.typecons : Nullable;
 
     Measurement("cpu",
-                ["foo": InfluxValue("42", InfluxValue.Type.int_.nullable)],
+                ["foo": InfluxValue("42", Nullable!(InfluxValue.Type)(InfluxValue.Type.int_))],
                 SysTime.fromUnixTime(7))
         .to!string.shouldEqualLine(`cpu foo=42i 7000000000`);
 }
@@ -877,10 +877,10 @@ struct InfluxValue {
 @safe unittest {
     import std.conv: to;
     import std.datetime: SysTime;
-    import std.typecons : nullable;
+    import std.typecons : Nullable;
 
     Measurement("cpu",
-                ["foo": InfluxValue("42i", InfluxValue.Type.int_.nullable)],
+                ["foo": InfluxValue("42i", Nullable!(InfluxValue.Type)(InfluxValue.Type.int_))],
                 SysTime.fromUnixTime(7))
         .to!string.shouldEqualLine(`cpu foo=42i 7000000000`);
 }
@@ -889,10 +889,10 @@ struct InfluxValue {
 @safe unittest {
     import std.conv: to;
     import std.datetime: SysTime;
-    import std.typecons : nullable;
+    import std.typecons : Nullable;
 
     Measurement("cpu",
-                ["foo": InfluxValue("1.2", InfluxValue.Type.float_.nullable)],
+                ["foo": InfluxValue("1.2", Nullable!(InfluxValue.Type)(InfluxValue.Type.float_))],
                 SysTime.fromUnixTime(7))
         .to!string.shouldEqualLine(`cpu foo=1.2 7000000000`);
 }
