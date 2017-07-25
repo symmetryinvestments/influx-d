@@ -432,7 +432,7 @@ struct Measurement {
             InfluxValue[string] ifields;
             () @trusted {
                 foreach(element; fields.byKeyValue) {
-                    ifields[element.key] = InfluxValue(element.value, Nullable!ValueType.init);
+                    ifields[element.key] = InfluxValue(element.value, Nullable!(InfluxValue.Type).init);
                 }
             }();
             this.fields = ifields;
@@ -533,7 +533,7 @@ private auto escape(Dg)(scope Dg dg, in char[] chars...) {
 
 private auto valueIsString(T)(in T value) {
     static if (is(T == string)) return true;
-    else static if (is(T == InfluxValue)) return value.type == ValueType.string;
+    else static if (is(T == InfluxValue)) return value.type == InfluxValue.Type.string;
     else static assert(0, format!"Unexpected value type %s"(typeid(T)));
 }
 
@@ -545,19 +545,19 @@ private auto guessValueType(string value) @safe pure nothrow @nogc {
     static immutable boolValues = ["t", "T", "true", "True", "TRUE", "f", "F", "false", "False", "FALSE"];
 
     // test for bool values
-    if(boolValues.canFind(value)) return ValueType.bool_;
+    if(boolValues.canFind(value)) return InfluxValue.Type.bool_;
 
     // test for int values
     if(value.length > 0 && value[$ - 1] == 'i') {
         auto tmp = value[0..$-1];
         if (tmp[0] == '-' && tmp.length > 1) tmp = tmp[1..$];
-        if (tmp.representation.all!(a => a >= '0' && a <= '9')) return ValueType.int_;
+        if (tmp.representation.all!(a => a >= '0' && a <= '9')) return InfluxValue.Type.int_;
     }
 
     // test for float values
-    if (valueIsFloat(value)) return ValueType.float_;
+    if (valueIsFloat(value)) return InfluxValue.Type.float_;
 
-    return ValueType.string;
+    return InfluxValue.Type.string;
 }
 
 private bool valueIsFloat(in string value) @safe pure nothrow @nogc {
@@ -724,11 +724,11 @@ private bool valueIsFloat(in string value) @safe pure nothrow @nogc {
     m.to!string.shouldEqualLine(`cpu\ "load"\,\ test,tag\ 1=to"to,tag\,2=foo foo\,\=\ ="a,b",b\,a\=r="a \" b"`);
 }
 
-enum ValueType { bool_, int_, float_, string }
-
 struct InfluxValue {
 
     import std.typecons : Nullable;
+
+    enum Type { bool_, int_, float_, string }
 
     union Payload {
         bool b;
@@ -737,38 +737,36 @@ struct InfluxValue {
     }
 
     private {
-        Payload m_value;
-        string m_svalue;
-        ValueType m_type;
+        Payload _value;
+        string _rawString;
+        Type _type;
     }
 
     this(bool v) @safe pure nothrow {
-        m_value.b = v;
-        m_type = ValueType.bool_;
+        _value.b = v;
+        _type = InfluxValue.Type.bool_;
     }
 
     this(T)(T v) @safe pure nothrow
     if (is(T == int) || is(T == long)) {
-        static if (is(T == int)) m_value.i = cast(long)v;
-        else m_value.i = v;
-        m_type = ValueType.int_;
+        _value.i = v;
+        _type = InfluxValue.Type.int_;
     }
 
     this(T)(T v) @safe pure nothrow
     if (is(T == float) || is(T == double)) {
-        static if (is(T == float)) m_value.f = cast(double)v;
-        else m_value.f = v;
-        m_type = ValueType.float_;
+        _value.f = v;
+        _type = InfluxValue.Type.float_;
     }
 
-    this(string v, Nullable!ValueType type = Nullable!ValueType(ValueType.string)) @safe pure nothrow {
-        m_svalue = v;
-        if (type.isNull) m_type = guessValueType(v);
-        else m_type = type;
+    this(string v, Nullable!Type type = Nullable!Type(Type.string)) @safe pure nothrow {
+        _rawString = v;
+        if (type.isNull) _type = guessValueType(v);
+        else _type = type;
     }
 
     auto type() const @safe pure nothrow {
-        return m_type;
+        return _type;
     }
 
     void toString(Dg)(scope Dg dg) const {
@@ -776,15 +774,15 @@ struct InfluxValue {
         import std.format: FormatSpec, formattedWrite, formatValue;
 
         FormatSpec!char fmt;
-        if (m_svalue.length) {
-            if (m_type == ValueType.int_ && m_svalue[$-1] != 'i') dg.formattedWrite("%si", m_svalue, fmt);
-            else dg.formatValue(m_svalue, fmt);
+        if (_rawString.length) {
+            if (_type == Type.int_ && _rawString[$-1] != 'i') dg.formattedWrite("%si", _rawString, fmt);
+            else dg.formatValue(_rawString, fmt);
         }
         else {
-            final switch (m_type) with (ValueType) {
-                case bool_: dg.formatValue(m_value.b, fmt); break;
-                case int_: dg.formattedWrite("%si", m_value.i, fmt); break;
-                case float_: dg.formatValue(m_value.f, fmt); break;
+            final switch (_type) with (Type) {
+                case bool_: dg.formatValue(_value.b, fmt); break;
+                case int_: dg.formattedWrite("%si", _value.i, fmt); break;
+                case float_: dg.formatValue(_value.f, fmt); break;
                 case string: assert(0);
             }
         }
@@ -802,13 +800,24 @@ struct InfluxValue {
     m.to!string.shouldEqualLine(`cpu foo=16i 7000000000`);
 }
 
+@("Measurement.to!string InfluxValue long")
+@safe unittest {
+    import std.conv: to;
+    import std.datetime: SysTime;
+
+    const m = Measurement("cpu",
+                          ["foo": InfluxValue(16L)],
+                          SysTime.fromUnixTime(7));
+    m.to!string.shouldEqualLine(`cpu foo=16i 7000000000`);
+}
+
 @("Measurement.to!string InfluxValue float")
 @safe unittest {
     import std.conv: to;
     import std.datetime: SysTime;
 
     Measurement("cpu",
-                ["foo": InfluxValue(16.0)],
+                ["foo": InfluxValue(16.0f)],
                 SysTime.fromUnixTime(7))
         .to!string.shouldEqualLine(`cpu foo=16 7000000000`);
 
@@ -840,7 +849,55 @@ struct InfluxValue {
         .to!string.shouldEqualLine(`cpu foo="bar" 7000000000`);
 }
 
-@("Measurement.to!string InfluxValue float string")
+@("Measurement.to!string InfluxValue string with specified bool value")
+@safe unittest {
+    import std.conv: to;
+    import std.datetime: SysTime;
+    import std.typecons : nullable;
+
+    Measurement("cpu",
+                ["foo": InfluxValue("true", InfluxValue.Type.bool_.nullable)],
+                SysTime.fromUnixTime(7))
+        .to!string.shouldEqualLine(`cpu foo=true 7000000000`);
+}
+
+@("Measurement.to!string InfluxValue string with specified int value")
+@safe unittest {
+    import std.conv: to;
+    import std.datetime: SysTime;
+    import std.typecons : nullable;
+
+    Measurement("cpu",
+                ["foo": InfluxValue("42", InfluxValue.Type.int_.nullable)],
+                SysTime.fromUnixTime(7))
+        .to!string.shouldEqualLine(`cpu foo=42i 7000000000`);
+}
+
+@("Measurement.to!string InfluxValue string with specified postfixed int value")
+@safe unittest {
+    import std.conv: to;
+    import std.datetime: SysTime;
+    import std.typecons : nullable;
+
+    Measurement("cpu",
+                ["foo": InfluxValue("42i", InfluxValue.Type.int_.nullable)],
+                SysTime.fromUnixTime(7))
+        .to!string.shouldEqualLine(`cpu foo=42i 7000000000`);
+}
+
+@("Measurement.to!string InfluxValue string with specified float value")
+@safe unittest {
+    import std.conv: to;
+    import std.datetime: SysTime;
+    import std.typecons : nullable;
+
+    Measurement("cpu",
+                ["foo": InfluxValue("1.2", InfluxValue.Type.float_.nullable)],
+                SysTime.fromUnixTime(7))
+        .to!string.shouldEqualLine(`cpu foo=1.2 7000000000`);
+}
+
+@("Measurement.to!string InfluxValue string with float value")
 @safe unittest {
     import std.conv: to;
     import std.datetime: SysTime;
@@ -849,6 +906,53 @@ struct InfluxValue {
                 ["foo": InfluxValue("5E57758")],
                 SysTime.fromUnixTime(7))
         .to!string.shouldEqualLine(`cpu foo="5E57758" 7000000000`);
+}
+
+@("Measurement.to!string InfluxValue string with guessed bool value")
+@safe unittest {
+    import std.conv: to;
+    import std.datetime: SysTime;
+    import std.typecons : Nullable;
+
+    Measurement("cpu",
+                ["foo": InfluxValue("true", Nullable!(InfluxValue.Type).init)],
+                SysTime.fromUnixTime(7))
+        .to!string.shouldEqualLine(`cpu foo=true 7000000000`);
+}
+
+@("Measurement.to!string InfluxValue string with guessed int value")
+@safe unittest {
+    import std.conv: to;
+    import std.datetime: SysTime;
+    import std.typecons : Nullable;
+
+    Measurement("cpu",
+                ["foo": InfluxValue("42i", Nullable!(InfluxValue.Type).init)],
+                SysTime.fromUnixTime(7))
+        .to!string.shouldEqualLine(`cpu foo=42i 7000000000`);
+}
+
+@("Measurement.to!string InfluxValue string with guessed float value")
+@safe unittest {
+    import std.conv: to;
+    import std.datetime: SysTime;
+    import std.typecons : Nullable;
+
+    Measurement("cpu",
+                ["foo": InfluxValue("1.2", Nullable!(InfluxValue.Type).init)],
+                SysTime.fromUnixTime(7))
+        .to!string.shouldEqualLine(`cpu foo=1.2 7000000000`);
+}
+
+@("Measurement.to!string InfluxValue guessed string value")
+@safe unittest {
+    import std.conv: to;
+    import std.datetime: SysTime;
+
+    Measurement("cpu",
+                ["foo": InfluxValue("bar")],
+                SysTime.fromUnixTime(7))
+        .to!string.shouldEqualLine(`cpu foo="bar" 7000000000`);
 }
 
 /**
