@@ -11,3 +11,4 @@ bin
 mir-integration/mir-integration
 mir-integration/dub.selections.json
 *.sublime-project
+influx-d-test-unittest-ssl-1.1
