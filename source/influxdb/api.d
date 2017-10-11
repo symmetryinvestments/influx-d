@@ -783,7 +783,7 @@ struct InfluxValue {
                 case bool_: dg.formatValue(_value.b, fmt); break;
                 case int_: dg.formattedWrite("%si", _value.i, fmt); break;
                 case float_: dg.formatValue(_value.f, fmt); break;
-                case string: assert(0);
+                case string: break;
             }
         }
     }
@@ -953,6 +953,28 @@ struct InfluxValue {
                 ["foo": InfluxValue("bar")],
                 SysTime.fromUnixTime(7))
         .to!string.shouldEqualLine(`cpu foo="bar" 7000000000`);
+}
+
+@("Measurement.to!string InfluxValue guessed null value")
+@safe unittest {
+    import std.conv: to;
+    import std.datetime: SysTime;
+
+    Measurement("cpu",
+                ["foo": InfluxValue(null)],
+                SysTime.fromUnixTime(7))
+        .to!string.shouldEqualLine(`cpu foo="" 7000000000`);
+}
+
+@("Measurement.to!string InfluxValue guessed empty string value")
+@safe unittest {
+    import std.conv: to;
+    import std.datetime: SysTime;
+
+    Measurement("cpu",
+                ["foo": InfluxValue("")],
+                SysTime.fromUnixTime(7))
+        .to!string.shouldEqualLine(`cpu foo="" 7000000000`);
 }
 
 /**
