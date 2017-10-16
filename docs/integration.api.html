@@ -15,7 +15,7 @@
 		<div id="logotype">
 		<span>Documentation</span>
 		<nav>
-			<a href="http://influxdb.code.kaleidic.io/">Kaleidic Associates Open Source - Nanomsg</a>
+			<a href="http://influxdb.code.kaleidic.io/">Kaleidic Associates Open Source - Influx DB</a>
 			<a href="https://github.com/kaleidicassociates/influxdb-dlang-wrapper/">Github - influx db wrapper for D</a>
 		</nav>
 		</div>
@@ -63,6 +63,29 @@
 <span class="br">12 </span><span class="kwrd">const</span> <span class="hid">result</span> = <span class="hid">response</span>.<span class="hid">results</span>[<span class="num">0</span>];
 <span class="br">13 </span><span class="kwrd">const</span> <span class="hid">series</span> = <span class="hid">result</span>.<span class="hid">series</span>[<span class="num">0</span>];
 <span class="br">14 </span><span class="hid">series</span>.<span class="hid">rows</span>.<span class="hid">length</span>.<span class="hid">shouldEqual</span>(<span class="num">2</span>);
+</pre></div><div class="unittest-example-holder"><div class="documentation-comment"></div><pre class="d_code highlighted with-line-wrappers"><span class="br">1 </span>
+<span class="br">2 </span><span class="kwrd">import</span> <span class="hid">influxdb</span>.<span class="hid">api</span>: <span class="hid">Database</span>, <span class="hid">Measurement</span>;
+<span class="br">3 </span><span class="kwrd">import</span> <span class="hid">std</span>.<span class="hid">datetime</span>;
+<span class="br">4 </span>
+<span class="br">5 </span><span class="kwrd">const</span> <span class="hid">database</span> = <span class="hid">Database</span>(<span class="hid">influxURL</span>, <span class="str">&quot;myspecialDB&quot;</span>);
+<span class="br">6 </span><span class="kwrd">scope</span>(<span class="hid">exit</span>) <span class="hid">database</span>.<span class="hid">drop</span>;
+<span class="br">7 </span>
+<span class="br">8 </span><span class="hid">database</span>.<span class="hid">insert</span>(<span class="hid">Measurement</span>(<span class="str">&quot;cpu&quot;</span>, [<span class="str">&quot;tag1&quot;</span>: <span class="str">&quot;foo&quot;</span>], [<span class="str">&quot;temperature&quot;</span>: <span class="str">&quot;42&quot;</span>], <span class="hid">SysTime</span>(<span class="hid">DateTime</span>(<span class="num">2017</span>, <span class="num">1</span>, <span class="num">1</span>))));
+<span class="br">9 </span><span class="hid">database</span>.<span class="hid">insert</span>(<span class="hid">Measurement</span>(<span class="str">&quot;cpu&quot;</span>, [<span class="str">&quot;tag1&quot;</span>: <span class="str">&quot;foo&quot;</span>], [<span class="str">&quot;temperature&quot;</span>: <span class="str">&quot;68&quot;</span>], <span class="hid">SysTime</span>(<span class="hid">DateTime</span>(<span class="num">2015</span>, <span class="num">1</span>, <span class="num">1</span>))));
+<span class="br">10 </span>
+<span class="br">11 </span>{
+<span class="br">12 </span>    <span class="kwrd">const</span> <span class="hid">response</span> = <span class="hid">database</span>.<span class="hid">query</span>(<span class="str">&quot;SELECT * from cpu&quot;</span>);
+<span class="br">13 </span>    <span class="kwrd">const</span> <span class="hid">result</span> = <span class="hid">response</span>.<span class="hid">results</span>[<span class="num">0</span>];
+<span class="br">14 </span>    <span class="kwrd">const</span> <span class="hid">series</span> = <span class="hid">result</span>.<span class="hid">series</span>[<span class="num">0</span>];
+<span class="br">15 </span>    <span class="hid">series</span>.<span class="hid">rows</span>.<span class="hid">length</span>.<span class="hid">shouldEqual</span>(<span class="num">2</span>);
+<span class="br">16 </span>}
+<span class="br">17 </span>
+<span class="br">18 </span>{
+<span class="br">19 </span>    <span class="kwrd">const</span> <span class="hid">response</span> = <span class="hid">database</span>.<span class="hid">query</span>(<span class="str">&quot;SELECT * from cpu WHERE time &gt;= '2016-01-01 00:00:00'&quot;</span>);
+<span class="br">20 </span>    <span class="kwrd">const</span> <span class="hid">result</span> = <span class="hid">response</span>.<span class="hid">results</span>[<span class="num">0</span>];
+<span class="br">21 </span>    <span class="kwrd">const</span> <span class="hid">series</span> = <span class="hid">result</span>.<span class="hid">series</span>[<span class="num">0</span>];
+<span class="br">22 </span>    <span class="hid">series</span>.<span class="hid">rows</span>.<span class="hid">length</span>.<span class="hid">shouldEqual</span>(<span class="num">1</span>);
+<span class="br">23 </span>}
 </pre></div><h2 id="meta"><a href="#meta" class="header-anchor">Meta</a></h2><div class="documentation-comment authors-section other-section"><h3 id="authors"><a href="#authors" class="header-anchor">Authors</a></h3><div><p>Atila Neves (Kaleidic Associates Advisory Limited)</p><p>Generated documentation:
         <a href="http://influxdb.code.kaleidic.io/influxdb.html">http://influxdb.code.kaleidic.io/influxdb.html</a></p></div></div></div></div>
 		<div id="page-nav"><a href="integration.html" class="parent">integration</a>
