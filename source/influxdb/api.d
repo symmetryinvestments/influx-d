@@ -494,7 +494,7 @@ private void aaFormat(Dg, T : K[V], K, V)
         dg.formatValue('=', fmt);
         if(quoteStrings && valueIsString(value)) {
             dg.formatValue('"', fmt);
-            dg.escape('"').formatValue(value, fmt);
+            dg.escape(`"\`).formatValue(value, fmt);
             dg.formatValue('"', fmt);
         } else
             dg.escape(`, `).formatValue(value, fmt);
@@ -847,6 +847,17 @@ struct InfluxValue {
                 ["foo": InfluxValue("bar")],
                 SysTime.fromUnixTime(7))
         .to!string.shouldEqualLine(`cpu foo="bar" 7000000000`);
+}
+
+@("Measurement.to!string InfluxValue string escaping")
+@safe unittest {
+    import std.conv: to;
+    import std.datetime: SysTime;
+
+    Measurement("cpu",
+                ["foo": InfluxValue(`{"msg":"\"test\""}`)],
+                SysTime.fromUnixTime(7))
+        .to!string.shouldEqualLine(`cpu foo="{\"msg\":\"\\\"test\\\"\"}" 7000000000`);
 }
 
 @("Measurement.to!string InfluxValue string with specified bool value")
