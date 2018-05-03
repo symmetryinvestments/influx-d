@@ -80,7 +80,7 @@
             "sourcePaths": ["source", "integration"],
             "dependencies": {
                 "unit-threaded": "~>0.7.0",
-                "mir-algorithm": "~>0.6.0"
+                "mir-algorithm": ">=0.6.0 <1.0.0"
             },
             "libs-posix": [
                 "ssl",
