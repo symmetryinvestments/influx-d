@@ -125,7 +125,7 @@ struct DatabaseImpl(alias manageFunc, alias queryFunc, alias writeFunc) {
         if(measurements.length == 0) return;
 
         static if (__VERSION__ >= 2074)
-            writeFunc(url, db, format!"%(%s\n%)"(measurements));
+            writeFunc(url, db, () @trusted { return format!"%(%s\n%)"(measurements); }());
         else
             writeFunc(url, db, format("%(%s\n%)", measurements));
     }
@@ -473,7 +473,7 @@ struct Measurement {
     }
     else {
         deprecated("Use std.conv.to!string instead.")
-        string toString()() const {
+        string toString()() @safe const {
             import std.conv: to;
             return this.to!string;
         }
@@ -533,7 +533,7 @@ private auto escape(Dg)(scope Dg dg, in char[] chars...) {
 
 private auto valueIsString(T)(in T value) {
     static if (is(T == string)) return true;
-    else static if (is(T == InfluxValue)) return value.type == InfluxValue.Type.string;
+    else static if (is(T == InfluxValue)) return value.type == InfluxValue.Type.string_;
     else static assert(0, format!"Unexpected value type %s"(typeid(T)));
 }
 
@@ -557,7 +557,7 @@ private auto guessValueType(string value) @safe pure nothrow @nogc {
     // test for float values
     if (valueIsFloat(value)) return InfluxValue.Type.float_;
 
-    return InfluxValue.Type.string;
+    return InfluxValue.Type.string_;
 }
 
 private bool valueIsFloat(in string value) @safe pure nothrow @nogc {
@@ -728,7 +728,7 @@ struct InfluxValue {
 
     import std.typecons : Nullable;
 
-    enum Type { bool_, int_, float_, string }
+    enum Type { bool_, int_, float_, string_ }
 
     union Payload {
         bool b;
@@ -759,7 +759,7 @@ struct InfluxValue {
         _type = InfluxValue.Type.float_;
     }
 
-    this(string v, Nullable!Type type = Nullable!Type(Type.string)) @safe pure nothrow {
+    this(string v, Nullable!Type type = Nullable!Type(Type.string_)) @safe pure nothrow {
         _rawString = v;
         if (type.isNull) _type = guessValueType(v);
         else _type = type;
@@ -783,7 +783,7 @@ struct InfluxValue {
                 case bool_: dg.formatValue(_value.b, fmt); break;
                 case int_: dg.formattedWrite("%si", _value.i, fmt); break;
                 case float_: dg.formatValue(_value.f, fmt); break;
-                case string: assert(0);
+                case string_: assert(0);
             }
         }
     }
@@ -797,7 +797,7 @@ struct InfluxValue {
     const m = Measurement("cpu",
                           ["foo": InfluxValue(16)],
                           SysTime.fromUnixTime(7));
-    m.to!string.shouldEqualLine(`cpu foo=16i 7000000000`);
+    () @trusted { return m.to!string; }().shouldEqualLine(`cpu foo=16i 7000000000`);
 }
 
 @("Measurement.to!string InfluxValue long")
@@ -808,7 +808,7 @@ struct InfluxValue {
     const m = Measurement("cpu",
                           ["foo": InfluxValue(16L)],
                           SysTime.fromUnixTime(7));
-    m.to!string.shouldEqualLine(`cpu foo=16i 7000000000`);
+    () @trusted { return m.to!string; }().shouldEqualLine(`cpu foo=16i 7000000000`);
 }
 
 @("Measurement.to!string InfluxValue float")
