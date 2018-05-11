@@ -24,7 +24,7 @@ matrix:
     include:
       - d: dmd
         script: dub run --root mir-integration && dub run --build=unittest -c integration-mir
+      - d: dmd-2.080.0
       - d: dmd-2.078.3
       - d: dmd-2.077.1
-      - d: dmd-2.076.1
-      - d: ldc
+      - d: ldc-1.9.0
