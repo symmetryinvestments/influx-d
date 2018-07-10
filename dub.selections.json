@@ -9,13 +9,13 @@
 		"libasync": "0.8.3",
 		"libevent": "2.0.2+2.0.16",
 		"memutils": "0.4.11",
-		"mir-algorithm": "0.6.21",
+		"mir-algorithm": "0.9.5",
 		"mir-linux-kernel": "1.0.0",
 		"openssl": "1.1.6+1.0.1g",
 		"stdx-allocator": "2.77.2",
 		"taggedalgebraic": "0.10.11",
 		"unit-threaded": "0.7.46",
-		"vibe-core": "1.4.0",
+		"vibe-core": "1.4.1",
 		"vibe-d": "0.8.4"
 	}
 }
