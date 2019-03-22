@@ -17,7 +17,7 @@ version(Have_mir_algorithm):
 static if (__VERSION__ >= 2073)
 {
 ////////////////////////////////////
-import mir.timeseries;
+import mir.series;
 import influxdb.api;
 import std.datetime: DateTime;
 
@@ -30,9 +30,9 @@ Params:
     rows = MeasurementSeries rows
     columns = List of columns (optional). The "time" colummn is ignored.
 Returns:
-    2D Mir $(LINK2 https://docs.algorithm.dlang.io/latest/mir_timeseries.html, Series).
+    2D Mir $(LINK2 https://docs.algorithm.dlang.io/latest/mir_series.html, Series).
 +/
-Series!(T*, Contiguous, [2], D*)
+Series!(T*, D*, 2)
     toMirSeries(T = DateTime, D = double)(
         MeasurementSeries.Rows rows,
         const(string)[] columns = null)
@@ -53,8 +53,9 @@ Series!(T*, Contiguous, [2], D*)
     }
     import mir.ndslice.allocation: slice, uninitSlice;
     import mir.ndslice.topology: map, as;
+    import mir.array.allocation: array;
     import std.conv: to;
-    auto time = rows["time"].slicedField.map!influxSysTime.as!T.slice;
+    auto time = rows["time"].array.map!influxSysTime.as!T.slice;
     auto data = uninitSlice!D(time.length, columns.length);
     foreach (i, column; columns)
     {
@@ -73,7 +74,7 @@ Series!(T*, Contiguous, [2], D*)
 @("toMirSeries")
 unittest
 {
-    import mir.timeseries;
+    import mir.series;
     import std.datetime: DateTime;
 
     auto influxSeries = MeasurementSeries("coolness",
@@ -87,7 +88,7 @@ unittest
 
     // sort data if required
     {
-        import mir.ndslice.algorithm: all;
+        import mir.algorithm.iteration: all;
         import mir.ndslice.allocation: uninitSlice;
         import mir.ndslice.topology: pairwise;
 

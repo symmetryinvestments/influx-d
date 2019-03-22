@@ -83,7 +83,7 @@ struct DatabaseImpl(alias manageFunc, alias queryFunc, alias writeFunc) {
 
     version(Have_mir_algorithm)
     {
-        import mir.timeseries: Series;
+        import mir.series: Series;
         import mir.ndslice.slice: DeepElementType, Slice, SliceKind;
     }
 
@@ -153,18 +153,18 @@ struct DatabaseImpl(alias manageFunc, alias queryFunc, alias writeFunc) {
     void insert(TimeIterator, SliceKind kind, Iterator)(
         string measurementName,
         string columnName,
-        Series!(TimeIterator, kind, [1], Iterator) series1,
+        Series!(TimeIterator, Iterator, 1, kind) series1,
         string[string] commonTags = null,
     ) const
     {
-        import mir.timeseries: series;
-        import mir.ndslice.topology: repeat, unpack, universal;
+        import mir.series: series;
+        import mir.ndslice.topology: repeat, unpack;
         import mir.ndslice.dynamic: transposed;
 
         return this.insert(
             measurementName,
             [columnName],
-            series1.time.series(series1.data.repeat(1).unpack.universal.transposed),
+            series1.time.series(series1.data.repeat(1).unpack.transposed),
             commonTags,
         );
     }
@@ -185,7 +185,7 @@ struct DatabaseImpl(alias manageFunc, alias queryFunc, alias writeFunc) {
     void insert(TimeIterator, SliceKind kind, Iterator)(
         string measurementName,
         in string[] columnNames,
-        Series!(TimeIterator, kind, [2], Iterator) series,
+        Series!(TimeIterator, Iterator, 2, kind) series,
         string[string] commonTags = null,
     ) const
     {
