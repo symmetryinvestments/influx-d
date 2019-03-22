@@ -4,12 +4,12 @@ Mir-Influx integration example.
 Include mir-algorithm into your project.
 
 See_also:
-	$(LINK2 http://docs.algorithm.dlang.io/latest/mir_timeseries.html, mir.timeseries).
+	$(LINK2 http://docs.algorithm.dlang.io/latest/mir_series.html, mir.series).
 
 Authors: Ilya Yaroshenko
 +/
 import influxdb;
-import mir.timeseries;
+import mir.series;
 import std.datetime: Date, DateTime;
 
 void main()
@@ -77,7 +77,7 @@ void readFromInflux()
 
     // sort data if required
     {
-        import mir.ndslice.algorithm: all;
+        import mir.algorithm.iteration: all;
         import mir.ndslice.allocation: uninitSlice;
         import mir.ndslice.topology: pairwise;
 

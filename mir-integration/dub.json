@@ -2,6 +2,6 @@
 	"name": "mir-integration",
 	"dependencies": {
 		"influx-d": {"path": "../"},
-		"mir-algorithm": "~>0.6.0"
+		"mir-algorithm": "~>3.3.11"
 	}
 }
