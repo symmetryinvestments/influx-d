@@ -1,5 +1,7 @@
 # influxdb-dlang-wrapper
 
+[![Build Status](https://travis-ci.org/kaleidicassociates/influx-d.png?branch=master)](https://travis-ci.org/kaleidicassociates/influx-d)
+
 D programming language wrapper for InfluxDB.
 
 Generated documentation
