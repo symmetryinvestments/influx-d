@@ -32,7 +32,7 @@
             "targetName": "bin/ut",
             "mainSourceFile": "bin/ut.d",
             "dependencies": {
-                "unit-threaded": "~>0.7.0"
+                "unit-threaded": "*"
             }
         },
 
@@ -42,7 +42,7 @@
             "targetName": "bin/ut",
             "mainSourceFile": "bin/ut.d",
             "dependencies": {
-                "unit-threaded": "~>0.7.0"
+                "unit-threaded": "*"
             },
             "libs-posix": [
                 ":libssl.so.1.0.0",
@@ -56,7 +56,7 @@
             "targetName": "bin/it",
             "sourcePaths": ["source", "integration"],
             "dependencies": {
-                "unit-threaded": "~>0.7.0",
+                "unit-threaded": "*",
             }
 
         },
@@ -67,7 +67,7 @@
             "targetName": "bin/it",
             "sourcePaths": ["source", "integration"],
             "dependencies": {
-                "unit-threaded": "~>0.7.0",
+                "unit-threaded": "*",
                 "mir-algorithm": "~>3.3.11"
             }
 
@@ -79,7 +79,7 @@
             "targetName": "bin/it",
             "sourcePaths": ["source", "integration"],
             "dependencies": {
-                "unit-threaded": "~>0.7.0",
+                "unit-threaded": "*",
                 "mir-algorithm": "~>3.3.11"
             },
             "libs-posix": [
