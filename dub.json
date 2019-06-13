@@ -56,7 +56,7 @@
             "targetName": "bin/it",
             "sourcePaths": ["source", "integration"],
             "dependencies": {
-                "unit-threaded": "*",
+                "unit-threaded": "*"
             }
 
         },
