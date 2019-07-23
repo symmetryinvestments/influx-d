@@ -6,7 +6,7 @@
     ],
     "dependencies": {
         "vibe-d:http": "~>0.8.0",
-        "asdf": ">=0.1.1 <0.5.0"
+        "asdf": ">=0.1.1 <0.6.0"
     },
     "description": "InfluxDB wrapper",
     "copyright": "Copyright © 2017, Kaleidic Associates Advisory Limited",
