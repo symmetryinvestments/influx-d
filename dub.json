@@ -68,7 +68,7 @@
             "sourcePaths": ["source", "integration"],
             "dependencies": {
                 "unit-threaded": "*",
-                "mir-algorithm": "~>3.3.11"
+                "mir-algorithm": ">=3.3.11 <4.0.0"
             }
 
         },
@@ -80,7 +80,7 @@
             "sourcePaths": ["source", "integration"],
             "dependencies": {
                 "unit-threaded": "*",
-                "mir-algorithm": "~>3.3.11"
+                "mir-algorithm": ">=3.3.11 <4.0.0"
             },
             "libs-posix": [
                 "ssl",
