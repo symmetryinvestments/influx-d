@@ -406,7 +406,8 @@ struct Measurement {
     InfluxValue[string] fields;
     long timestamp;
 
-    this(T)(string name,
+    this(T)
+        (string name,
          T[string] fields,
          SysTime time = SysTime.fromUnixTime(0))
     @safe
@@ -724,6 +725,10 @@ private bool valueIsFloat(in string value) @safe pure nothrow @nogc {
     m.to!string.shouldEqualLine(`cpu\ "load"\,\ test,tag\ 1=to"to,tag\,2=foo foo\,\=\ ="a,b",b\,a\=r="a \" b"`);
 }
 
+
+/**
+   A sum type of values that can be stored in influxdb
+ */
 struct InfluxValue {
 
     import std.typecons : Nullable;
