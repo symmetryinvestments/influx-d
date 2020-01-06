@@ -770,7 +770,7 @@ struct InfluxValue {
     } body {
         _rawString = v;
         if (type.isNull) _type = guessValueType(v);
-        else _type = type;
+        else _type = type.get;
     }
 
     auto type() const @safe pure nothrow {
