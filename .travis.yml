@@ -16,6 +16,8 @@ matrix:
     - d: ldc-1.17.0
   allow_failures:
     - d: dmd-nightly
+    - d: dmd
+    - d: ldc
 
 
 before_install:
