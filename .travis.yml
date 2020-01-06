@@ -30,5 +30,5 @@ before_script:
 
 script:
   - dub test
-  - dub run --build=unittest -c integration
+  - pushd integration && dub run --build=unittest -c integration && popd
   - dub build

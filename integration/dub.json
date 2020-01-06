@@ -1,0 +1,35 @@
+{
+    "name": "integration",
+    "dependencies": {
+        "unit-threaded": "*",
+        "influx-d": { "path": "../" }
+    },
+    "targetPath": "bin",
+    "targetType": "executable",
+    "configurations": [
+        {
+            "name": "integration",
+            "targetName": "it",
+        },
+        {
+            "name": "integration-mir",
+            "targetName": "it-mir",
+            "dependencies": {
+                "mir-algorithm": "~>3.3.11"
+            }
+        },
+        {
+            "name": "integration-ssl-1.1",
+            "targetName": "it-ssl-1.1",
+            "dependencies": {
+                "mir-algorithm": "~>3.3.11"
+            },
+            "libs-posix": [
+                "ssl",
+                "crypto",
+                ":libssl.so.1.0.0",
+                ":libcrypto.so.1.0.0"
+            ]
+        }
+    ]
+}

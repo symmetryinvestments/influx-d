@@ -6,6 +6,7 @@
 		"botan-math": "1.0.3",
 		"diet-ng": "1.6.0",
 		"eventcore": "0.8.48",
+		"influx-d": {"path":"../"},
 		"libasync": "0.8.4",
 		"libevent": "2.0.2+2.0.16",
 		"memutils": "0.4.13",

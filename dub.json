@@ -48,46 +48,6 @@
                 ":libssl.so.1.0.0",
                 ":libcrypto.so.1.0.0"
             ]
-        },
-
-        {
-            "name": "integration",
-            "targetType": "executable",
-            "targetName": "bin/it",
-            "sourcePaths": ["source", "integration"],
-            "dependencies": {
-                "unit-threaded": "*"
-            }
-
-        },
-
-        {
-            "name": "integration-mir",
-            "targetType": "executable",
-            "targetName": "bin/it",
-            "sourcePaths": ["source", "integration"],
-            "dependencies": {
-                "unit-threaded": "*",
-                "mir-algorithm": "~>3.3.11"
-            }
-
-        },
-
-        {
-            "name": "integration-ssl-1.1",
-            "targetType": "executable",
-            "targetName": "bin/it",
-            "sourcePaths": ["source", "integration"],
-            "dependencies": {
-                "unit-threaded": "*",
-                "mir-algorithm": "~>3.3.11"
-            },
-            "libs-posix": [
-                "ssl",
-                "crypto",
-                ":libssl.so.1.0.0",
-                ":libcrypto.so.1.0.0"
-            ]
         }
     ]
 
