@@ -15,14 +15,14 @@
             "name": "integration-mir",
             "targetName": "it-mir",
             "dependencies": {
-                "mir-algorithm": "~>3.3.11"
+                "mir-algorithm": "*"
             }
         },
         {
             "name": "integration-ssl-1.1",
             "targetName": "it-ssl-1.1",
             "dependencies": {
-                "mir-algorithm": "~>3.3.11"
+                "mir-algorithm": "*"
             },
             "libs-posix": [
                 "ssl",
