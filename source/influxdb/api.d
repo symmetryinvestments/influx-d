@@ -10,7 +10,7 @@
 
 module influxdb.api;
 
-version(unittest)
+version(Test_InfluxD)
     import unit_threaded;
 else
     struct Values { this(string[]...) { } }
@@ -1225,7 +1225,7 @@ unittest {
     SysTime(DateTime(2017, 2, 1), UTC()).toInfluxDateTime.shouldEqual("'2017-02-01T00:00:00Z'");
 }
 
-version(unittest) {
+version(Test_InfluxD) {
     /**
     Example:
     The two lines must be equivalent under InfluxDB's line protocol
