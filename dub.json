@@ -13,7 +13,6 @@
     "license": "BSD 3-clause",
     "targetType": "library",
     "sourcePaths": ["source"],
-    "versions": ["unitUnthreaded"],
 
     "configurations": [
 
@@ -33,7 +32,8 @@
             "mainSourceFile": "bin/ut.d",
             "dependencies": {
                 "unit-threaded": "*"
-            }
+            },
+            "versions": ["unitUnthreaded", "Test_InfluxD"]
         },
 
         {
@@ -47,7 +47,8 @@
             "libs-posix": [
                 ":libssl.so.1.0.0",
                 ":libcrypto.so.1.0.0"
-            ]
+            ],
+            "versions": ["unitUnthreaded", "Test_InfluxD"]
         }
     ]
 
