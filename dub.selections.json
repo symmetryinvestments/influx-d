@@ -15,7 +15,7 @@
 		"openssl": "1.1.6+1.0.1g",
 		"stdx-allocator": "2.77.5",
 		"taggedalgebraic": "0.11.16",
-		"unit-threaded": "1.0.9",
+		"unit-threaded": "1.0.10",
 		"vibe-core": "1.9.3",
 		"vibe-d": "0.8.6"
 	}
