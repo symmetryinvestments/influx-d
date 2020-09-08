@@ -691,17 +691,17 @@ private bool valueIsFloat(in string value) @safe pure nothrow @nogc {
     m.to!string.shouldEqualLine(`cpu foo="bar" 7000000000`);
 }
 
-@("Measurement.to!string with bool")
-@Values("t", "T", "true", "True", "TRUE", "f", "F", "false", "False", "FALSE")
-@safe unittest {
-    import std.conv: to;
-    import std.datetime: SysTime;
+static foreach(value; ["t", "T", "true", "True", "TRUE", "f", "F", "false", "False", "FALSE"]) {
+    @("Measurement.to!string with bool." ~ value)
+    @safe unittest {
+        import std.conv: to;
+        import std.datetime: SysTime;
 
-    const value = getValue!string;
-    auto m = Measurement("cpu",
-                         ["foo": value],
-                         SysTime.fromUnixTime(7));
-    m.to!string.shouldEqualLine(`cpu foo=` ~ value ~ ` 7000000000`);
+        auto m = Measurement("cpu",
+                             ["foo": value],
+                             SysTime.fromUnixTime(7));
+        m.to!string.shouldEqualLine(`cpu foo=` ~ value ~ ` 7000000000`);
+    }
 }
 
 @("Measurement.to!string with int")
