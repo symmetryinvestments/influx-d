@@ -1005,11 +1005,16 @@ struct Result {
  */
 struct MeasurementSeries {
 
-    import asdf: serializationIgnoreIn, Asdf;
+    static if (__traits(compiles, { import asdf.serialization: serdeIgnoreIn; }))
+        import asdf.serialization: serdeIgnoreIn;
+    else
+        import asdf.serialization: serdeIgnoreIn = serializationIgnoreIn;
+
+    import asdf: Asdf;
 
     string name;
     string[] columns;
-    @serializationIgnoreIn string[][] values;
+    @serdeIgnoreIn string[][] values;
 
     static struct Rows {
         import std.range: Transversal, TransverseOptions;
