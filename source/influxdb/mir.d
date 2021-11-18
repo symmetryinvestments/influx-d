@@ -12,10 +12,6 @@ License: BSD 3-clause
 +/
 module influxdb.mir;
 
-version(Have_mir_algorithm):
-
-static if (__VERSION__ >= 2073)
-{
 ////////////////////////////////////
 import mir.series;
 import influxdb.api;
@@ -51,18 +47,19 @@ Series!(T*, D*, 2)
             break;
         }
     }
+    import mir.timestamp: Timestamp;
     import mir.ndslice.allocation: slice, uninitSlice;
     import mir.ndslice.topology: map, as;
     import mir.array.allocation: array;
     import std.conv: to;
-    auto time = rows["time"].array.map!influxSysTime.as!T.slice;
+    auto time = rows["time"].array.map!(a => a.get!string.Timestamp).as!T.slice;
     auto data = uninitSlice!D(time.length, columns.length);
     foreach (i, column; columns)
     {
         auto from = rows[column];
         foreach (ref elem; data[0 .. $, i])
         {
-            elem = from.front.to!D;
+            elem = from.front.get!D;
             from.popFront;
         }
         assert(from.empty);
@@ -80,8 +77,8 @@ unittest
     auto influxSeries = MeasurementSeries("coolness",
         ["time", "foo", "bar"],
         [
-            ["2015-06-11T20:46:02Z", "1.0", "2.0"],
-            ["2013-02-09T12:34:56Z", "3.0", "4.0"],
+            ["2015-06-11T20:46:02Z".InfluxValue, 1.0.InfluxValue, 2.0.InfluxValue],
+            ["2013-02-09T12:34:56Z".InfluxValue, 3.0.InfluxValue, 4.0.InfluxValue],
         ]);
 
     auto series = influxSeries.rows.toMirSeries;
@@ -108,7 +105,3 @@ unittest
         [3.0, 4.0],
         [1.0, 2.0]]);
 }
-////////////////////////////////////
-}
-else
-    pragma(msg, "Warning: influxdb.mir requires DMD Front End >= 2073");

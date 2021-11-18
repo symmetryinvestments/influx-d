@@ -9,7 +9,6 @@
 */
 module influxdb.vibe;
 
-
 ///
 void manage(in string url, in string str) {
     vibePostQuery(url, "q=" ~ str);

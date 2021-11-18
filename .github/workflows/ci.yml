@@ -1,0 +1,52 @@
+name: CI Pipeline
+on: [push, pull_request]
+
+jobs:
+  unit-tests:
+    name: Unit tests
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macOS-10.15]
+        dc: [dmd-latest, ldc-latest, dmd-2.098.1, ldc-1.28.1]
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install D compiler
+        uses: dlang-community/setup-dlang@v1
+        with:
+          compiler: ${{ matrix.dc }}
+
+      - name: Unit tests
+        run: |
+          dub build
+          dub test
+          dub run --root mir-integration-example
+
+  integration-test:
+    name: Integration tests
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        dc: [dmd-latest, ldc-latest, dmd-2.098.1, ldc-1.28.1]
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install D compiler
+        uses: dlang-community/setup-dlang@v1
+        with:
+          compiler: ${{ matrix.dc }}
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo -E apt-get -yq --no-install-suggests --no-install-recommends --force-yes install influxdb libevent-dev
+
+      - name: Integration tests
+        run: |
+          sudo service influxdb start
+          cd integration
+          dub run --build=unittest -c integration

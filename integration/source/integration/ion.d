@@ -7,16 +7,15 @@
         http://influxdb.code.kaleidic.io/influxdb.html
 
 */
-module integration.asdf;
+module integration.ion;
 
-import asdf;
 import influxdb.api;
 import unit_threaded;
-
 
 ///
 @("deserialise Response")
 @system unittest {
+    import mir.ion.deser.json: deserializeJson;
     enum jsonString = `
         {
             "results": [{
@@ -33,7 +32,7 @@ import unit_threaded;
         }
         `;
 
-    jsonString.deserialize!Response.shouldEqual(
+    jsonString.deserializeJson!Response.shouldEqual(
         Response(
             [
                 Result(
@@ -43,8 +42,8 @@ import unit_threaded;
                             ["time", "othervalue", "tag1", "tag2", "value"], //columns
                             //values
                             [
-                                ["2015-06-11T20:46:02Z", "4", "toto", "titi", "2"],
-                                ["2017-03-14T23:15:01.06282785Z", "3", "letag", "othertag", "1"],
+                                ["2015-06-11T20:46:02Z".InfluxValue, 4.InfluxValue, "toto".InfluxValue, "titi".InfluxValue, 2.InfluxValue],
+                                ["2017-03-14T23:15:01.06282785Z".InfluxValue, 3.InfluxValue, "letag".InfluxValue, "othertag".InfluxValue, 1.InfluxValue],
                             ]
                         ),
                     ],
@@ -54,18 +53,4 @@ import unit_threaded;
             ]
         )
     );
-}
-
-
-/**
-    Example:
-*/
-void shouldBeSameJsonAs(in string actual,
-                        in string expected,
-                        in string file = __FILE__,
-                        in size_t line = __LINE__)
-    @trusted // parseJSON
-{
-    import std.json;
-    actual.parseJSON.toPrettyString.shouldEqual(expected.parseJSON.toPrettyString, file, line);
 }

@@ -10,6 +10,9 @@
 
 module influxdb.api;
 
+import mir.algebraic: Variant;
+import mir.string_map: StringMap;
+
 version(Test_InfluxD)
     import unit_threaded;
 else
@@ -18,56 +21,6 @@ else
 static import influxdb.vibe;
 import std.typecons: Flag, No;
 import std.datetime: Date, DateTime, SysTime, UTC;
-
-/++
-Params:
-    time = Influx-db time string
-Returns:
-    SysTime
-+/
-SysTime influxSysTime(string time) @safe
-{
-    import std.datetime: SysTime, DateTimeException;
-
-    try {
-        return SysTime.fromISOExtString(time);
-    } catch(DateTimeException ex) {
-        // see https://issues.dlang.org/show_bug.cgi?id=16053
-        import std.stdio: stderr;
-        import std.algorithm: countUntil;
-
-        debug {
-            (() @trusted => stderr)()
-                .writeln("Could not convert ", time, " due to a Phobos bug, reducing precision");
-        }
-
-        // find where the fractional part starts
-        auto dotIndex = time.countUntil(".");
-        if(dotIndex < 0)
-            dotIndex = time.countUntil(",");
-        if(dotIndex < 0)
-            throw ex;
-
-
-        const firstNonDigitIndex = time[dotIndex + 1 .. $].countUntil!(a => a < '0' || a > '9') + dotIndex + 1;
-        if(firstNonDigitIndex < 0) throw ex;
-
-        const lastDigitIndex = firstNonDigitIndex - 1;
-
-        foreach(i; 0 .. 4) {
-            // try to cut out a number from the fraction
-            // inaccurate but better than throwing an exception
-            const timeStr =
-                time[0 .. lastDigitIndex - i] ~
-                time[firstNonDigitIndex .. $];
-            try
-                return SysTime.fromISOExtString(timeStr);
-            catch(DateTimeException _) {}
-        }
-
-        throw ex;
-    }
-}
 
 ///
 alias Database = DatabaseImpl!(influxdb.vibe.manage, influxdb.vibe.query, influxdb.vibe.write);
@@ -112,8 +65,8 @@ struct DatabaseImpl(alias manageFunc, alias queryFunc, alias writeFunc) {
        (e.g. "SELECT * FROM foo")
      */
     Response query(in string query) @trusted const { // deserialize is @system
-        import asdf: deserialize;
-        return queryFunc(url, db, query).deserialize!Response;
+        import mir.ion.deser.json: deserializeJson;
+        return queryFunc(url, db, query).deserializeJson!Response;
     }
 
     /**
@@ -154,7 +107,7 @@ struct DatabaseImpl(alias manageFunc, alias queryFunc, alias writeFunc) {
         string measurementName,
         string columnName,
         Series!(TimeIterator, Iterator, 1, kind) series1,
-        string[string] commonTags = null,
+        StringMap!string commonTags = null,
     ) const
     {
         import mir.series: series;
@@ -186,7 +139,7 @@ struct DatabaseImpl(alias manageFunc, alias queryFunc, alias writeFunc) {
         string measurementName,
         in string[] columnNames,
         Series!(TimeIterator, Iterator, 2, kind) series,
-        string[string] commonTags = null,
+        StringMap!string commonTags = null,
     ) const
     {
         alias Time = typeof(series.front.time);
@@ -195,7 +148,10 @@ struct DatabaseImpl(alias manageFunc, alias queryFunc, alias writeFunc) {
         import std.traits: isSomeString;
         import std.exception: assumeUnique, enforce;
         import std.array: appender;
-        import std.format: FormatSpec, formatValue;
+        import mir.format: print;
+        import mir.ndslice.topology: as;
+        import mir.array.allocation: array;
+        import std.typecons: Yes;
 
         enforce(measurementName.length);
         enforce(columnNames.length == series.length!1, "columnNames.length should be equal to series.length!1");
@@ -205,7 +161,6 @@ struct DatabaseImpl(alias manageFunc, alias queryFunc, alias writeFunc) {
             return;
         }
 
-        FormatSpec!char fmt;
         auto app = appender!(const(char)[]);
 
         // name output
@@ -214,7 +169,7 @@ struct DatabaseImpl(alias manageFunc, alias queryFunc, alias writeFunc) {
         if (commonTags.length)
         {
             app.put(",");
-            aaFormat(&app.put!(const(char)[]), commonTags);
+            aaFormat(app, commonTags);
         }
         app.put(" ");
         // name + tags
@@ -231,24 +186,7 @@ struct DatabaseImpl(alias manageFunc, alias queryFunc, alias writeFunc) {
             app.put(head);
 
             // values output
-            foreach(j, key; columnNames)
-            {
-                auto value = observation.data[j];
-                if (j)
-                    app.put(",");
-                app.formatValue(key, fmt);
-                app.put("=");
-                static if(isSomeString!Data)
-                {
-                    app.put(`"`);
-                    app.formatValue(value, fmt);
-                    app.put(`"`);
-                }
-                else
-                {
-                    app.formatValue(value, fmt);
-                }
-            }
+            app.aaFormat(StringMap!Data(cast(string[])columnNames, observation.value.lightScope.as!Data.array), Yes.quoteStrings);
 
             // time output
             static if (is(Time : long))
@@ -272,7 +210,7 @@ struct DatabaseImpl(alias manageFunc, alias queryFunc, alias writeFunc) {
             if (timestamp != 0)
             {
                 app.put(" ");
-                app.formatValue(timestamp, fmt);
+                app.print(timestamp);
             }
         }
         writeFunc(url, db, app.data.assumeUnique);
@@ -288,7 +226,7 @@ struct DatabaseImpl(alias manageFunc, alias queryFunc, alias writeFunc) {
 
 ///
 @("Database")
-@safe unittest { // not pure because of asdf.deserialize
+@safe unittest { // impure due to SysTime.fracSecs
 
     string[string][] manages;
     string[string][] queries;
@@ -321,9 +259,9 @@ struct DatabaseImpl(alias manageFunc, alias queryFunc, alias writeFunc) {
     manages.shouldEqual([["url": "http://db.com", "cmd": "CREATE DATABASE testdb"]]);
 
     writes.shouldBeEmpty;
-    database.insert(Measurement("cpu", ["tag1": "foo"], ["temperature": "42"]));
+    database.insert(Measurement("cpu", ["tag1": "foo"], ["temperature": 42]));
     writes.shouldEqual([["url": "http://db.com", "db": "testdb",
-                        "line": "cpu,tag1=foo temperature=42"]]);
+                        "line": "cpu,tag1=foo temperature=42i"]]);
 
     queries.shouldBeEmpty;
     const response = database.query("SELECT * from foo");
@@ -339,8 +277,8 @@ struct DatabaseImpl(alias manageFunc, alias queryFunc, alias writeFunc) {
             ["time", "othervalue", "tag1", "tag2", "value"], //columns
             //values
             [
-                ["2015-06-11T20:46:02Z", "4", "toto", "titi", "2"],
-                ["2017-03-14T23:15:01.06282785Z", "3", "letag", "othertag", "1"],
+                ["2015-06-11T20:46:02Z".InfluxValue, 4.InfluxValue, "toto".InfluxValue, "titi".InfluxValue, 2.InfluxValue],
+                ["2017-03-14T23:15:01.06282785Z".InfluxValue, 3.InfluxValue, "letag".InfluxValue, "othertag".InfluxValue, 1.InfluxValue],
             ]
         )
     );
@@ -360,15 +298,15 @@ struct DatabaseImpl(alias manageFunc, alias queryFunc, alias writeFunc) {
 
     const database = TestDatabase("http://db.com", "testdb");
     database.insert(
-        Measurement("cpu", ["index": "1"], ["temperature": "42"]),
-        Measurement("cpu", ["index": "2"], ["temperature": "42"]),
-        Measurement("cpu", ["index": "2"], ["temperature": "42"]),
+        Measurement("cpu", ["index": "1"], ["temperature": 42]),
+        Measurement("cpu", ["index": "2"], ["temperature": 42]),
+        Measurement("cpu", ["index": "2"], ["temperature": 42]),
     );
 
     () @trusted {
         lines.shouldEqual(
             [
-                "cpu,index=1 temperature=42\ncpu,index=2 temperature=42\ncpu,index=2 temperature=42",
+                "cpu,index=1 temperature=42i\ncpu,index=2 temperature=42i\ncpu,index=2 temperature=42i",
             ]
         );
     }();
@@ -397,225 +335,140 @@ struct DatabaseImpl(alias manageFunc, alias queryFunc, alias writeFunc) {
    An InfluxDB measurement
  */
 struct Measurement {
-
+    import mir.timestamp;
     import std.datetime: SysTime;
     import std.traits : Unqual;
 
     string name;
-    string[string] tags;
-    InfluxValue[string] fields;
-    long timestamp;
+    StringMap!string tags;
+    StringMap!InfluxValue fields;
+    Timestamp timestamp;
+
 
     this(T)
         (string name,
          T[string] fields,
-         SysTime time = SysTime.fromUnixTime(0))
+         SysTime time = SysTime.init)
     @safe
-    if (is(Unqual!T == string) || is(Unqual!T == InfluxValue)) {
-        string[string] tags;
-        this(name, tags, fields, time);
+    {
+        this(name, null, fields, time);
     }
 
-    this(T)(string name,
+    this(T)
+        (string name,
          string[string] tags,
          T[string] fields,
-         SysTime time = SysTime.fromUnixTime(0))
+         SysTime time = SysTime.init)
+    @safe
+    {
+        StringMap!InfluxValue ifields;
+        foreach(element; fields.byKeyValue) {
+            ifields[element.key] = InfluxValue(element.value);
+        }
+        this(name, tags.StringMap!string, ifields, time);
+    }
+
+    this(string name,
+        StringMap!string tags,
+        StringMap!InfluxValue fields,
+        SysTime time = SysTime.init)
     @safe // impure due to SysTime.fracSecs
-    if (is(Unqual!T == string) || is(Unqual!T == InfluxValue)) {
+    {
 
         import std.datetime: nsecs;
 
         this.name = name;
         this.tags = tags;
 
-        static if (is(Unqual!T == string)) {
-            import std.typecons : Nullable;
-            InfluxValue[string] ifields;
-            () @trusted {
-                foreach(element; fields.byKeyValue) {
-                    ifields[element.key] = InfluxValue(element.value, Nullable!(InfluxValue.Type).init);
-                }
-            }();
-            this.fields = ifields;
-        }
-        else this.fields = fields;
-        // InfluxDB uses UNIX time in _nanoseconds_
-        // stdTime is in hnsecs
-        //this.timestamp = time.stdTime / 100;
-        this.timestamp = (time.toUnixTime!long * 1_000_000_000 + time.fracSecs.total!"nsecs");
+        this.fields = fields;
+        if (time != SysTime.init)
+            this.timestamp = time;
     }
 
-    void toString(Dg)(scope Dg dg) const {
+    void toString(W)(ref W w) const @trusted {
 
-        import std.format: FormatSpec, formatValue;
+        import mir.format: print;
         import std.typecons: Yes;
 
-        FormatSpec!char fmt;
-        dg.escape(`, `).formatValue(name, fmt);
+        w.escapedPrint(`, `, name);
         if (tags.length) {
-            dg.formatValue(',', fmt);
-            dg.aaFormat(tags);
+            w.put(',');
+            w.aaFormat(tags);
         }
-        dg.formatValue(' ', fmt);
-        dg.aaFormat(fields, Yes.quoteStrings);
-        if(timestamp != 0) {
-            dg.formatValue(' ', fmt);
-            dg.formatValue(timestamp, fmt);
+        w.put(' ');
+        w.aaFormat(fields, Yes.quoteStrings);
+        if(timestamp != timestamp.init) {
+            w.put(' ');
+            w.print(timestamp.toUnixTime * 10 ^^ 9 + timestamp.getFraction!9);
         }
     }
 
-    static if (__VERSION__ < 2072) {
-        string toString() @safe const {
-            import std.array : appender;
-            auto res = appender!string;
-            toString(res);
-            return res.data;
-        }
-    }
-    else {
-        deprecated("Use std.conv.to!string instead.")
-        string toString()() @safe const {
-            import std.conv: to;
-            return this.to!string;
-        }
+    string toString() @safe const pure {
+        import std.array : appender;
+        auto res = appender!string;
+        toString(res);
+        return res.data;
     }
 }
 
-private void aaFormat(Dg, T : K[V], K, V)
-                     (scope Dg dg, scope T aa, in Flag!"quoteStrings" quoteStrings = No.quoteStrings)
+private void aaFormat(W, T : StringMap!V, V)
+                     (ref W w, const T aa, in Flag!"quoteStrings" quoteStrings = No.quoteStrings)
 {
-    import std.format: FormatSpec, formatValue;
-    size_t i;
-    FormatSpec!char fmt;
-    foreach(key, value; aa)
+    import mir.format: print;
+    foreach(i, key; aa.keys)
     {
-        if (i++)
-            dg.formatValue(',', fmt);
-        dg.escape(`,= `).formatValue(key, fmt);
-        dg.formatValue('=', fmt);
-        if(quoteStrings && valueIsString(value)) {
-            dg.formatValue('"', fmt);
-            dg.escape(`"\`).formatValue(value, fmt);
-            dg.formatValue('"', fmt);
-        } else
-            dg.escape(`, `).formatValue(value, fmt);
-    }
-}
-
-private auto escape(Dg)(scope Dg dg, in char[] chars...) {
-
-    struct Escaper(Dg) {
-        void put(T)(T val) {
-            import std.algorithm : canFind;
-            import std.format: FormatSpec, formatValue;
-
-            FormatSpec!char fmt;
-            foreach (c; val) {
-                if (chars.canFind(c))
-                    dg.formatValue('\\', fmt);
-                dg.formatValue(c, fmt);
+        if (i)
+            w.put(',');
+        w.escapedPrint(`,= `, key);
+        w.put('=');
+        auto value = aa.values[i];
+        import mir.algebraic: match;
+        value.match!(
+            (string a) {
+                if (quoteStrings) {
+                    w.put('"');
+                    w.escapedPrint(`"`, a);
+                    w.put('"');
+                } else {
+                    w.escapedPrint(`, `, a);
+                }
+            },
+            (long a) {
+                w.print(a);
+                w.put('i');
+            },
+            (bool a) {
+                w.print(a);
+            },
+            (a) {
+                w.print(a);
             }
+        );
+    }
+}
+
+private auto escapedPrint(W, T)(ref return W w, return const(char)[] chars, T value) {
+
+    static struct Escaper {
+        W* w;
+        const(char)[] chars;
+        void put(char c) {
+            import mir.algorithm.iteration: find;
+            if (c == '\\' || chars.find!(a => a == c))
+                w.put('\\');
+            w.put(c);
         }
 
-        static if (__VERSION__ < 2072) {
-            void putChar(char c) {
-                import std.algorithm : canFind;
-                import std.format : formattedWrite;
-
-                if (chars.canFind(c))
-                    dg.formattedWrite("%s", '\\');
-                dg.formattedWrite("%s", c);
-            }
+        void put(scope const(char)[] str) {
+            foreach (char c; str)
+                put(c);
         }
     }
 
-    return Escaper!Dg();
-}
+    auto ew = Escaper(&w, chars);
+    import mir.format: print;
+    ew.print(value);
 
-private auto valueIsString(T)(in T value) {
-    static if (is(T == string)) return true;
-    else static if (is(T == InfluxValue)) return value.type == InfluxValue.Type.string_;
-    else static assert(0, format!"Unexpected value type %s"(typeid(T)));
-}
-
-private auto guessValueType(string value) @safe pure nothrow @nogc {
-
-    import std.algorithm: all, canFind;
-    import std.string : representation;
-
-    static immutable boolValues = ["t", "T", "true", "True", "TRUE", "f", "F", "false", "False", "FALSE"];
-
-    // test for bool values
-    if(boolValues.canFind(value)) return InfluxValue.Type.bool_;
-
-    // test for int values
-    if(value.length > 0 && value[$ - 1] == 'i') {
-        auto tmp = value[0..$-1];
-        if (tmp[0] == '-' && tmp.length > 1) tmp = tmp[1..$];
-        if (tmp.representation.all!(a => a >= '0' && a <= '9')) return InfluxValue.Type.int_;
-    }
-
-    // test for float values
-    if (valueIsFloat(value)) return InfluxValue.Type.float_;
-
-    return InfluxValue.Type.string_;
-}
-
-private bool valueIsFloat(in string value) @safe pure nothrow @nogc {
-
-    if (!value.length) return false;
-
-    int dotidx = -1;
-    int eidx = -1;
-    foreach(i, c; value) {
-        if (c == '+' || c == '-') {
-            if (i != 0 && (eidx < 0 || (eidx >= 0 && i-1 != eidx))) return false;
-        }
-        else if (c == '.') {
-            if (dotidx >= 0 || eidx > 0) return false;
-            dotidx = cast(int)i;
-        }
-        else if (c == 'e' || c == 'E') {
-            if (i == 0 || eidx > 0 || i+1 == value.length) return false;
-            eidx = cast(int)i;
-        }
-        else if (c < '0' || c > '9') return false;
-    }
-    return true;
-}
-
-///
-@("valueIsFloat")
-@safe unittest {
-    // valid
-    "123".valueIsFloat.shouldBeTrue;
-    "-123".valueIsFloat.shouldBeTrue;
-    "1e1".valueIsFloat.shouldBeTrue;
-    "+1.e1".valueIsFloat.shouldBeTrue;
-    ".1e1".valueIsFloat.shouldBeTrue;
-    "1e+1".valueIsFloat.shouldBeTrue;
-    "1.E-1".valueIsFloat.shouldBeTrue;
-    "1.2".valueIsFloat.shouldBeTrue;
-    "-1.3e+10".valueIsFloat.shouldBeTrue;
-    "+1.".valueIsFloat.shouldBeTrue;
-
-    // invalid
-    "1a".valueIsFloat.shouldBeFalse;
-    "1e.1".valueIsFloat.shouldBeFalse;
-    "e1".valueIsFloat.shouldBeFalse;
-    "".valueIsFloat.shouldBeFalse;
-    "1eE1".valueIsFloat.shouldBeFalse;
-    "1..0".valueIsFloat.shouldBeFalse;
-    "1.e.1".valueIsFloat.shouldBeFalse;
-    "1e12.3".valueIsFloat.shouldBeFalse;
-    "1e1+1".valueIsFloat.shouldBeFalse;
-    "ee".valueIsFloat.shouldBeFalse;
-    "1ee1".valueIsFloat.shouldBeFalse;
-    "++1".valueIsFloat.shouldBeFalse;
-    "1+1".valueIsFloat.shouldBeFalse;
-    "1.1.1".valueIsFloat.shouldBeFalse;
-    "1+".valueIsFloat.shouldBeFalse;
-    "1ě+1".valueIsFloat.shouldBeFalse;
 }
 
 ///
@@ -625,14 +478,14 @@ private bool valueIsFloat(in string value) @safe pure nothrow @nogc {
     {
         auto m = Measurement("cpu",
                              ["tag1": "toto", "tag2": "foo"],
-                             ["load": "42", "temperature": "53"]);
-        m.to!string.shouldEqualLine("cpu,tag1=toto,tag2=foo load=42,temperature=53");
+                             ["load": 42, "temperature": 53]);
+        m.to!string.shouldEqualLine("cpu,tag1=toto,tag2=foo load=42i,temperature=53i");
     }
     {
         auto m = Measurement("thingie",
                              ["foo": "bar"],
-                             ["value": "7"]);
-        m.to!string.shouldEqualLine("thingie,foo=bar value=7");
+                             ["value": 7]);
+        m.to!string.shouldEqualLine("thingie,foo=bar value=7i");
     }
 }
 
@@ -641,8 +494,8 @@ private bool valueIsFloat(in string value) @safe pure nothrow @nogc {
 @safe unittest {
     import std.conv: to;
     auto m = Measurement("cpu",
-                         ["load": "42", "temperature": "53"]);
-    m.to!string.shouldEqualLine("cpu load=42,temperature=53");
+                         ["load": 42, "temperature": 53]);
+    m.to!string.shouldEqualLine("cpu load=42i,temperature=53i");
 }
 
 ///
@@ -653,9 +506,9 @@ private bool valueIsFloat(in string value) @safe pure nothrow @nogc {
 
     auto m = Measurement("cpu",
                          ["tag1": "toto", "tag2": "foo"],
-                         ["load": "42", "temperature": "53"],
+                         ["load": 42, "temperature": 53],
                          SysTime.fromUnixTime(7));
-    m.to!string.shouldEqualLine("cpu,tag1=toto,tag2=foo load=42,temperature=53 7000000000");
+    m.to!string.shouldEqualLine("cpu,tag1=toto,tag2=foo load=42i,temperature=53i 7000000000");
 }
 
 ///
@@ -665,9 +518,9 @@ private bool valueIsFloat(in string value) @safe pure nothrow @nogc {
     import std.datetime: SysTime;
 
     auto m = Measurement("cpu",
-                         ["load": "42", "temperature": "53"],
+                         ["load": 42, "temperature": 53],
                          SysTime.fromUnixTime(7));
-    m.to!string.shouldEqualLine("cpu load=42,temperature=53 7000000000");
+    m.to!string.shouldEqualLine("cpu load=42i,temperature=53i 7000000000");
 }
 
 @("Measurement fraction of a second")
@@ -675,9 +528,9 @@ private bool valueIsFloat(in string value) @safe pure nothrow @nogc {
     import std.conv: to;
     import std.datetime: DateTime, SysTime, Duration, usecs, nsecs, UTC;
     auto m = Measurement("cpu",
-                         ["load": "42", "temperature": "53"],
+                         ["load": 42, "temperature": 53],
                          SysTime(DateTime(2017, 2, 1), 300.usecs + 700.nsecs, UTC()));
-    m.to!string.shouldEqualLine("cpu load=42,temperature=53 1485907200000300700");
+    m.to!string.shouldEqualLine("cpu load=42i,temperature=53i 1485907200000300700");
 }
 
 @("Measurement.to!string with string")
@@ -691,18 +544,6 @@ private bool valueIsFloat(in string value) @safe pure nothrow @nogc {
     m.to!string.shouldEqualLine(`cpu foo="bar" 7000000000`);
 }
 
-static foreach(value; ["t", "T", "true", "True", "TRUE", "f", "F", "false", "False", "FALSE"]) {
-    @("Measurement.to!string with bool." ~ value)
-    @safe unittest {
-        import std.conv: to;
-        import std.datetime: SysTime;
-
-        auto m = Measurement("cpu",
-                             ["foo": value],
-                             SysTime.fromUnixTime(7));
-        m.to!string.shouldEqualLine(`cpu foo=` ~ value ~ ` 7000000000`);
-    }
-}
 
 @("Measurement.to!string with int")
 @safe unittest {
@@ -710,7 +551,7 @@ static foreach(value; ["t", "T", "true", "True", "TRUE", "f", "F", "false", "Fal
     import std.datetime: SysTime;
 
     auto m = Measurement("cpu",
-                         ["foo": "16i", "bar": "-1i", "str": "-i"],
+                         ["foo": 16.InfluxValue, "bar": InfluxValue(-1), "str": "-i".InfluxValue],
                          SysTime.fromUnixTime(7));
     m.to!string.shouldEqualLine(`cpu foo=16i,bar=-1i,str="-i" 7000000000`);
 }
@@ -725,77 +566,10 @@ static foreach(value; ["t", "T", "true", "True", "TRUE", "f", "F", "false", "Fal
     m.to!string.shouldEqualLine(`cpu\ "load"\,\ test,tag\ 1=to"to,tag\,2=foo foo\,\=\ ="a,b",b\,a\=r="a \" b"`);
 }
 
-
 /**
    A sum type of values that can be stored in influxdb
  */
-struct InfluxValue {
-
-    import std.typecons : Nullable;
-
-    enum Type { bool_, int_, float_, string_ }
-
-    union Payload {
-        bool b;
-        long i;
-        double f;
-    }
-
-    private {
-        Payload _value;
-        string _rawString = null;
-        Type _type;
-    }
-
-    this(bool v) @safe pure nothrow {
-        _value.b = v;
-        _type = InfluxValue.Type.bool_;
-    }
-
-    this(T)(T v) @safe pure nothrow
-    if (is(T == int) || is(T == long)) {
-        _value.i = v;
-        _type = InfluxValue.Type.int_;
-    }
-
-    this(T)(T v) @safe pure nothrow
-    if (is(T == float) || is(T == double)) {
-        _value.f = v;
-        _type = InfluxValue.Type.float_;
-    }
-
-    this(string v, Nullable!Type type = Nullable!Type(Type.string_)) @safe pure nothrow
-    in {
-        assert(v !is null);
-    } body {
-        _rawString = v;
-        if (type.isNull) _type = guessValueType(v);
-        else _type = type.get;
-    }
-
-    auto type() const @safe pure nothrow {
-        return _type;
-    }
-
-    void toString(Dg)(scope Dg dg) const {
-
-        import std.format: FormatSpec, formattedWrite, formatValue;
-
-        FormatSpec!char fmt;
-        if (_rawString !is null) {
-            if (_type == Type.int_ && _rawString[$-1] != 'i') dg.formattedWrite("%si", _rawString, fmt);
-            else dg.formatValue(_rawString, fmt);
-        }
-        else {
-            final switch (_type) with (Type) {
-                case bool_: dg.formatValue(_value.b, fmt); break;
-                case int_: dg.formattedWrite("%si", _value.i, fmt); break;
-                case float_: dg.formatValue(_value.f, fmt); break;
-                case string_: assert(0);
-            }
-        }
-    }
-}
+ alias InfluxValue = Variant!(string, double, long, bool);
 
 @("Measurement.to!string InfluxValue int")
 @safe unittest {
@@ -825,12 +599,12 @@ struct InfluxValue {
     import std.datetime: SysTime;
 
     Measurement("cpu",
-                ["foo": InfluxValue(16.0f)],
+                ["foo": 16.0f],
                 SysTime.fromUnixTime(7))
-        .to!string.shouldEqualLine(`cpu foo=16 7000000000`);
+        .to!string.shouldEqualLine(`cpu foo=16.0 7000000000`);
 
     Measurement("cpu",
-                ["foo": InfluxValue(16.1)],
+                ["foo": 16.1],
                 SysTime.fromUnixTime(7))
         .to!string.shouldEqualLine(`cpu foo=16.1 7000000000`);
 }
@@ -841,7 +615,7 @@ struct InfluxValue {
     import std.datetime: SysTime;
 
     Measurement("cpu",
-                ["foo": InfluxValue(true)],
+                ["foo": true],
                 SysTime.fromUnixTime(7))
         .to!string.shouldEqualLine(`cpu foo=true 7000000000`);
 }
@@ -852,7 +626,7 @@ struct InfluxValue {
     import std.datetime: SysTime;
 
     Measurement("cpu",
-                ["foo": InfluxValue("bar")],
+                ["foo": "bar"],
                 SysTime.fromUnixTime(7))
         .to!string.shouldEqualLine(`cpu foo="bar" 7000000000`);
 }
@@ -863,7 +637,7 @@ struct InfluxValue {
     import std.datetime: SysTime;
 
     Measurement("cpu",
-                ["foo": InfluxValue("")],
+                ["foo": ""],
                 SysTime.fromUnixTime(7))
         .to!string.shouldEqualLine(`cpu foo="" 7000000000`);
 }
@@ -874,55 +648,31 @@ struct InfluxValue {
     import std.datetime: SysTime;
 
     Measurement("cpu",
-                ["foo": InfluxValue(`{"msg":"\"test\""}`)],
+                ["foo": `{"msg":"\"test\""}`],
                 SysTime.fromUnixTime(7))
         .to!string.shouldEqualLine(`cpu foo="{\"msg\":\"\\\"test\\\"\"}" 7000000000`);
 }
 
-@("Measurement.to!string InfluxValue string with specified bool value")
+@("Measurement.to!string InfluxValue int value")
 @safe unittest {
     import std.conv: to;
     import std.datetime: SysTime;
     import std.typecons : Nullable;
 
     Measurement("cpu",
-                ["foo": InfluxValue("true", Nullable!(InfluxValue.Type)(InfluxValue.Type.bool_))],
-                SysTime.fromUnixTime(7))
-        .to!string.shouldEqualLine(`cpu foo=true 7000000000`);
-}
-
-@("Measurement.to!string InfluxValue string with specified int value")
-@safe unittest {
-    import std.conv: to;
-    import std.datetime: SysTime;
-    import std.typecons : Nullable;
-
-    Measurement("cpu",
-                ["foo": InfluxValue("42", Nullable!(InfluxValue.Type)(InfluxValue.Type.int_))],
+                ["foo": 42],
                 SysTime.fromUnixTime(7))
         .to!string.shouldEqualLine(`cpu foo=42i 7000000000`);
 }
 
-@("Measurement.to!string InfluxValue string with specified postfixed int value")
+@("Measurement.to!string InfluxValue float value")
 @safe unittest {
     import std.conv: to;
     import std.datetime: SysTime;
     import std.typecons : Nullable;
 
     Measurement("cpu",
-                ["foo": InfluxValue("42i", Nullable!(InfluxValue.Type)(InfluxValue.Type.int_))],
-                SysTime.fromUnixTime(7))
-        .to!string.shouldEqualLine(`cpu foo=42i 7000000000`);
-}
-
-@("Measurement.to!string InfluxValue string with specified float value")
-@safe unittest {
-    import std.conv: to;
-    import std.datetime: SysTime;
-    import std.typecons : Nullable;
-
-    Measurement("cpu",
-                ["foo": InfluxValue("1.2", Nullable!(InfluxValue.Type)(InfluxValue.Type.float_))],
+                ["foo": 1.2],
                 SysTime.fromUnixTime(7))
         .to!string.shouldEqualLine(`cpu foo=1.2 7000000000`);
 }
@@ -933,56 +683,9 @@ struct InfluxValue {
     import std.datetime: SysTime;
 
     Measurement("cpu",
-                ["foo": InfluxValue("5E57758")],
+                ["foo": "5E57758"],
                 SysTime.fromUnixTime(7))
         .to!string.shouldEqualLine(`cpu foo="5E57758" 7000000000`);
-}
-
-@("Measurement.to!string InfluxValue string with guessed bool value")
-@safe unittest {
-    import std.conv: to;
-    import std.datetime: SysTime;
-    import std.typecons : Nullable;
-
-    Measurement("cpu",
-                ["foo": InfluxValue("true", Nullable!(InfluxValue.Type).init)],
-                SysTime.fromUnixTime(7))
-        .to!string.shouldEqualLine(`cpu foo=true 7000000000`);
-}
-
-@("Measurement.to!string InfluxValue string with guessed int value")
-@safe unittest {
-    import std.conv: to;
-    import std.datetime: SysTime;
-    import std.typecons : Nullable;
-
-    Measurement("cpu",
-                ["foo": InfluxValue("42i", Nullable!(InfluxValue.Type).init)],
-                SysTime.fromUnixTime(7))
-        .to!string.shouldEqualLine(`cpu foo=42i 7000000000`);
-}
-
-@("Measurement.to!string InfluxValue string with guessed float value")
-@safe unittest {
-    import std.conv: to;
-    import std.datetime: SysTime;
-    import std.typecons : Nullable;
-
-    Measurement("cpu",
-                ["foo": InfluxValue("1.2", Nullable!(InfluxValue.Type).init)],
-                SysTime.fromUnixTime(7))
-        .to!string.shouldEqualLine(`cpu foo=1.2 7000000000`);
-}
-
-@("Measurement.to!string InfluxValue guessed string value")
-@safe unittest {
-    import std.conv: to;
-    import std.datetime: SysTime;
-
-    Measurement("cpu",
-                ["foo": InfluxValue("bar")],
-                SysTime.fromUnixTime(7))
-        .to!string.shouldEqualLine(`cpu foo="bar" 7000000000`);
 }
 
 /**
@@ -1004,67 +707,76 @@ struct Result {
    Data for one measurement
  */
 struct MeasurementSeries {
-
-    static if (__traits(compiles, { import asdf.serialization: serdeIgnoreIn; }))
-        import asdf.serialization: serdeIgnoreIn;
-    else
-        import asdf.serialization: serdeIgnoreIn = serializationIgnoreIn;
-
-    import asdf: Asdf;
+    import mir.serde: serdeIgnoreIn;
+    import mir.ndslice.slice: Slice;
 
     string name;
     string[] columns;
-    @serdeIgnoreIn string[][] values;
+    Slice!(InfluxValue*, 2) values;
+
+    this(
+        string name,
+        string[] columns,
+        InfluxValue[][] values,
+    ) @safe pure {
+        import mir.ndslice.fuse : fuse;
+        this.name = name;
+        this.columns = columns;
+        this.values = values.fuse;
+    }
 
     static struct Rows {
         import std.range: Transversal, TransverseOptions;
 
-        const string[] columns;
-        const(string[])[] rows;
+        const(string)[] columns;
+        Slice!(const(InfluxValue)*, 2) rows;
 
         static struct Row {
 
             import std.datetime: SysTime;
 
             const string[] columnNames;
-            const string[] columnValues;
+            const InfluxValue[] columnValues;
 
-            string opIndex(in string key) @safe pure const {
+            InfluxValue opIndex(in string key) @safe pure const {
                 import std.algorithm: countUntil;
                 return columnValues[columnNames.countUntil(key)];
             }
 
-            string get(string key, string defaultValue) @safe pure const {
+            InfluxValue get(string key, InfluxValue defaultValue) @safe pure const {
                 import std.algorithm: countUntil;
                 auto i = columnNames.countUntil(key);
                 return (i==-1) ? defaultValue : columnValues[i];
             }
 
             SysTime time() @safe const {
-                return influxSysTime(this["time"]);
+                import mir.timestamp: Timestamp;
+                return cast(SysTime) this["time"].get!string.Timestamp;
             }
 
-            void toString(Dg)(scope Dg dg) const {
-                dg("Row(");
+            void toString(W)(ref W w) const {
+                w.put("Row(");
                 foreach(i, value; columnValues) {
                     if (i)
-                        dg(", ");
-                    dg(columnNames[i]);
-                    dg(": ");
-                    dg(value);
+                        w.put(", ");
+                    w.put(columnNames[i]);
+                    w.put(": ");
+                    import mir.format: print;
+                    w.print(value);
                 }
-                dg(")");
+                w.put(")");
             }
 
-            deprecated("Use std.conv.to!string instead.")
-            string toString()() {
-                import std.conv: to;
-                return this.to!string;
+            string toString() @safe const pure {
+                import std.array : appender;
+                auto res = appender!string;
+                toString(res);
+                return res.data;
             }
         }
 
         Row opIndex(in size_t i) @safe pure const nothrow {
-            return Row(columns, rows[i]);
+            return Row(columns, rows[i].field);
         }
 
         /++
@@ -1075,13 +787,12 @@ struct MeasurementSeries {
         Throws:
             Exception, if key was not found.
         +/
-        Transversal!(const(string[])[], TransverseOptions.assumeNotJagged)
-        opIndex(in string key) @safe pure const {
+        auto opIndex(in string key) @safe pure const {
             import std.algorithm: countUntil;
             size_t idx = columns.countUntil(key);
             if (idx >= columns.length)
                 throw new Exception("Unknown key " ~ key);
-            return typeof(return)(rows, idx);
+            return rows[0 .. $, idx];
         }
 
         size_t length() @safe pure const nothrow { return rows.length; }
@@ -1099,29 +810,8 @@ struct MeasurementSeries {
         }
     }
 
-    inout(Rows) rows() @safe pure nothrow inout {
-        return inout(Rows)(columns, values);
-    }
-
-    void finalizeDeserialization(Asdf data) {
-        import std.algorithm: map, count;
-        import std.array: uninitializedArray;
-        auto rows = data["values"].byElement.map!"a.byElement";
-        // count is fast for Asdf
-        values = uninitializedArray!(string[][])(rows.count, columns.length);
-        foreach(value; values)
-        {
-            auto row = rows.front;
-            assert(row.count == columns.length);
-            foreach (ref e; value)
-            {
-                // do not allocates data here because of `const`,
-                // reuses Asdf data
-                e = cast(string) cast(const(char)[]) row.front;
-                row.popFront;
-            }
-            rows.popFront;
-        }
+    Rows rows() @safe pure nothrow const {
+        return Rows(columns, values);
     }
 }
 
@@ -1135,8 +825,8 @@ struct MeasurementSeries {
     auto series = MeasurementSeries("coolness",
                                     ["time", "foo", "bar"],
                                     [
-                                        ["2015-06-11T20:46:02Z", "red", "blue"],
-                                        ["2013-02-09T12:34:56Z", "green", "yellow"],
+                                        ["2015-06-11T20:46:02Z".InfluxValue, "red".InfluxValue, "blue".InfluxValue],
+                                        ["2013-02-09T12:34:56Z".InfluxValue, "green".InfluxValue, "yellow".InfluxValue],
                                     ]);
 
     series.rows[0]["foo"].shouldEqual("red");
@@ -1153,10 +843,10 @@ struct MeasurementSeries {
     series.rows.array.shouldEqual(
         [
             MeasurementSeries.Rows.Row(["time", "foo", "bar"],
-                                       ["2015-06-11T20:46:02Z", "red", "blue"],
+                                       ["2015-06-11T20:46:02Z".InfluxValue, "red".InfluxValue, "blue".InfluxValue],
                                        ),
             MeasurementSeries.Rows.Row(["time", "foo", "bar"],
-                                       ["2013-02-09T12:34:56Z", "green", "yellow"],
+                                       ["2013-02-09T12:34:56Z".InfluxValue, "green".InfluxValue, "yellow".InfluxValue],
                                        ),
         ]
     );
@@ -1167,9 +857,9 @@ struct MeasurementSeries {
 @safe pure unittest {
     auto series = MeasurementSeries("coolness",
                                     ["time", "foo", "bar"],
-                                    [["2015-06-11T20:46:02Z", "red", "blue"]]);
-    series.rows[0].get("foo", "oops").shouldEqual("red");
-    series.rows[0].get("quux", "oops").shouldEqual("oops");
+                                    [["2015-06-11T20:46:02Z".InfluxValue, "red".InfluxValue, "blue".InfluxValue]]);
+    series.rows[0].get("foo", "oops".InfluxValue).shouldEqual("red");
+    series.rows[0].get("quux", "oops".InfluxValue).shouldEqual("oops");
 }
 
 ///
@@ -1178,7 +868,7 @@ struct MeasurementSeries {
     import std.conv: to;
     auto series = MeasurementSeries("coolness",
                                     ["time", "foo", "bar"],
-                                    [["2015-06-11T20:46:02Z", "red", "blue"]]);
+                                    [["2015-06-11T20:46:02Z".InfluxValue, "red".InfluxValue, "blue".InfluxValue]]);
     series.rows[0].to!string.shouldEqual("Row(time: 2015-06-11T20:46:02Z, foo: red, bar: blue)");
 }
 
@@ -1192,7 +882,7 @@ struct MeasurementSeries {
     auto series = MeasurementSeries("coolness",
                                     ["time", "foo", "bar"],
                                     [
-                                        ["2017-05-10T14:47:38.82524801Z", "red", "blue"],
+                                        ["2017-05-10T14:47:38.82524801Z".InfluxValue, "red".InfluxValue, "blue".InfluxValue],
                                     ]);
 
     series.rows[0].time.shouldEqual(SysTime(DateTime(2017, 05, 10, 14, 47, 38), 825248.usecs, UTC()));
