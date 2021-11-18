@@ -765,9 +765,7 @@ struct InfluxValue {
     }
 
     this(string v, Nullable!Type type = Nullable!Type(Type.string_)) @safe pure nothrow
-    in {
-        assert(v !is null);
-    } body {
+    in (v !is null) {
         _rawString = v;
         if (type.isNull) _type = guessValueType(v);
         else _type = type.get;
