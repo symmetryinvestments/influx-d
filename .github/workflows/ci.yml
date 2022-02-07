@@ -24,6 +24,8 @@ jobs:
           dub test
           dub run --root mir-integration-example
 
+      - uses: codecov/codecov-action@v1
+
   integration-test:
     name: Integration tests
     strategy:
