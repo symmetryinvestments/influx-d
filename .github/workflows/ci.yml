@@ -6,8 +6,8 @@ jobs:
     name: Unit tests
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macOS-10.15]
-        dc: [dmd-latest, ldc-latest, dmd-2.090.1, ldc-1.20.1]
+        os: [ubuntu-20.04, windows-2019, macOS-10.15]
+        dc: [dmd-2.098.1, ldc-1.28.1]
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -28,8 +28,8 @@ jobs:
     name: Integration tests
     strategy:
       matrix:
-        os: [ubuntu-latest]
-        dc: [dmd-latest, ldc-latest, dmd-2.090.1, ldc-1.20.1]
+        os: [ubuntu-20.04]
+        dc: [dmd-2.098.1, ldc-1.28.1]
 
     runs-on: ${{ matrix.os }}
     steps:
