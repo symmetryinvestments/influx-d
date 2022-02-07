@@ -1,6 +1,7 @@
 # influxdb-dlang-wrapper
 
-[![Build Status](https://travis-ci.org/symmetryinvestments/influx-d.svg?branch=master)](https://travis-ci.org/symmetryinvestments/influx-d)
+[![Actions Status](https://github.com/symmetryinvestments/influx-d/workflows/CI/badge.svg)](https://github.com/symmetryinvestments/influx-d/actions)
+[![Coverage](https://codecov.io/gh/symmetryinvestments/influx-d/branch/master/graph/badge.svg)](https://codecov.io/gh/symmetryinvestments/influx-d)
 
 D programming language wrapper for InfluxDB.
 
