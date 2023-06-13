@@ -6,7 +6,7 @@ module integration.vibe;
 
 import unit_threaded;
 import integration.common: influxURL;
-import influxdb.vibe: manage, query, write;
+import influxdb.http: manage, query, write;
 import std.json: JSONValue, parseJSON;
 
 

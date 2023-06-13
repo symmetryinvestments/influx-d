@@ -1,5 +1,5 @@
 /**
-    This module implements utility functions for Influx API using vibe-d
+    This module implements utility functions for Influx REST API
 
     Authors: Atila Neves (Kaleidic Associates Advisory Limited)
 
@@ -7,7 +7,7 @@
         http://influxdb.code.kaleidic.io/influxdb.html
 
 */
-module influxdb.vibe;
+module influxdb.http;
 
 import requests : Request, Response, urlEncoded;
 
