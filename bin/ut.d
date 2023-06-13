@@ -7,6 +7,6 @@ int main(string[] args)
     return args.runTests!(
                           "influxdb.api",
                           "influxdb",
-                          "influxdb.vibe"
+                          "influxdb.http"
                           );
 }

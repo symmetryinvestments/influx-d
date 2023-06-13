@@ -15,7 +15,7 @@ version(Test_InfluxD)
 else
     struct Values { this(string[]...) { } }
 
-static import influxdb.vibe;
+static import influxdb.http;
 import std.typecons: Flag, No;
 import std.datetime: Date, DateTime, SysTime, UTC;
 
@@ -70,7 +70,7 @@ SysTime influxSysTime(string time) @safe
 }
 
 ///
-alias Database = DatabaseImpl!(influxdb.vibe.manage, influxdb.vibe.query, influxdb.vibe.write);
+alias Database = DatabaseImpl!(influxdb.http.manage, influxdb.http.query, influxdb.http.write);
 
 /**
     Holds information about the database name and URL, forwards
