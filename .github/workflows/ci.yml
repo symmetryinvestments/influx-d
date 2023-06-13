@@ -6,7 +6,7 @@ jobs:
     name: Unit tests
     strategy:
       matrix:
-        os: [ubuntu-20.04, windows-2019, macOS-10.15]
+        os: [ubuntu-20.04, windows-2019, macOS-11]
         dc: [dmd-2.098.1, ldc-1.28.1]
 
     runs-on: ${{ matrix.os }}
