@@ -36,15 +36,19 @@ jobs:
     name: Integration tests
     strategy:
       matrix:
-        os: [ubuntu-20.04]
-        dc: [dmd-2.098.1, ldc-1.28.1]
+        os:
+          - ubuntu-24.04
+        dc:
+          - dmd-2.098.1
+          - dmd-2.111.0
+          - ldc-1.28.1
 
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Install D compiler
-        uses: dlang-community/setup-dlang@v1
+        uses: dlang-community/setup-dlang@v2
         with:
           compiler: ${{ matrix.dc }}
 
