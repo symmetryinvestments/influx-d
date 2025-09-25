@@ -4,9 +4,10 @@
 		"asdf": "0.7.2",
 		"automem": "0.6.9",
 		"cachetools": "0.4.1",
-		"mir-algorithm": "3.10.12",
-		"mir-core": "1.1.40",
-		"requests": "2.0.9",
+		"mir-algorithm": "3.12.47",
+		"mir-core": "1.7.3",
+		"requests": "2.2.0",
+		"silly": "1.1.1",
 		"test_allocator": "0.3.4",
 		"unit-threaded": "1.0.11"
 	}
