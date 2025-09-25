@@ -14,6 +14,7 @@ jobs:
           - dmd-2.098.1
           - dmd-2.111.0
           - ldc-1.28.1
+          - ldc-1.41.0
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -42,6 +43,7 @@ jobs:
           - dmd-2.098.1
           - dmd-2.111.0
           - ldc-1.28.1
+          - ldc-1.41.0
 
     runs-on: ${{ matrix.os }}
     steps:
